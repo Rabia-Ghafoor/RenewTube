@@ -35,3 +35,28 @@ const auth = getAuth(app);
  * @return a promise that resolves with the user's credetials 
  */
 
+export function signInWithGoogle(){
+    return signInWithPopup(auth, new GoogleAuthProvider());
+
+
+}
+
+
+/**
+ * Signs the user out 
+ * @return a promise that gets resolved when the user signs out
+ */
+
+export function signOut(){
+    return auth.signOut();
+}
+
+
+/**
+ * This trigiers  a callback function when the user auth changes 
+ * @return a function to unsubscribe callback
+ */
+
+export function onAuthStateChangedHelper (callback: ( user: User| null) => void ){
+    return onAuthStateChanged(auth, callback);
+}
