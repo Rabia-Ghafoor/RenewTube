@@ -1,7 +1,7 @@
 // 1. GCS - Google clould storage file interactions
 // 2. Keeping track of local file interactions
 
-import { Storage } from "@google-cloud/storage";
+import { Storage } from "@google-cloud/storage"; // imported storage and created an instance of it 
 import fs from 'fs';
 import ffmpeg from 'fluent-ffmpeg';
 
