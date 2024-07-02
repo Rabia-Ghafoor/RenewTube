@@ -325,10 +325,10 @@ class CustomerEncryptionKey(_messages.Message):
 
 
 class DomainConfig(_messages.Message):
-  r"""Configuration options for a custom domain.
+  r"""Configuration options for private workstation clusters.
 
   Fields:
-    domain: Immutable. Domain used by Workstations for HTTP ingress.
+    domain: Immutable. Whether Workstations endpoint is private.
   """
 
   domain = _messages.StringField(1)
@@ -447,7 +447,7 @@ class GceInstance(_messages.Message):
       workstation configurations that specify a machine_type in the N1 or N2
       machine series. * **GPUs**: nested virtualization may not be enabled on
       workstation configurations with accelerators. * **Operating System**:
-      Because [Container-Optimized
+      because [Container-Optimized
       OS](https://cloud.google.com/compute/docs/images/os-details#container-
       optimized_os_cos) does not support nested virtualization, when nested
       virtualization is enabled, the underlying Compute Engine VM instances
@@ -645,10 +645,10 @@ class GenerateAccessTokenRequest(_messages.Message):
       token's expiration time will be set to a default value of 1 hour in the
       future.
     port: Optional. Port for which the access token should be generated. If
-      specified, the generated access token will grant access only to the
+      specified, the generated access token grants access only to the
       specified port of the workstation. If specified, values must be within
-      the range [1 - 65535]. If not specified, the generated access token will
-      grant access to all ports of the workstation.
+      the range [1 - 65535]. If not specified, the generated access token
+      grants access to all ports of the workstation.
     ttl: Desired lifetime duration of the access token. This value must be at
       most 24 hours. If a value is not specified, the token's lifetime will be
       set to a default value of 1 hour.
@@ -1006,7 +1006,7 @@ class Policy(_messages.Message):
 
 class PortRange(_messages.Message):
   r"""A PortsConfig defines a range of ports. Both first and last are
-  inclusive. To specify a single port, both first and last should be same.
+  inclusive. To specify a single port, both first and last should be the same.
 
   Fields:
     first: Required. Starting port number for the current range of ports.
@@ -1018,26 +1018,13 @@ class PortRange(_messages.Message):
 
 
 class PrivateClusterConfig(_messages.Message):
-  r"""Configuration options for private workstation clusters.
+  r"""A PrivateClusterConfig object.
 
   Fields:
-    allowedProjects: Optional. Additional projects that are allowed to attach
-      to the workstation cluster's service attachment. By default, the
-      workstation cluster's project and the VPC host project (if different)
-      are allowed.
-    clusterHostname: Output only. Hostname for the workstation cluster. This
-      field will be populated only when private endpoint is enabled. To access
-      workstations in the workstation cluster, create a new DNS zone mapping
-      this domain name to an internal IP address and a forwarding rule mapping
-      that address to the service attachment.
-    enablePrivateEndpoint: Immutable. Whether Workstations endpoint is
-      private.
-    serviceAttachmentUri: Output only. Service attachment URI for the
-      workstation cluster. The service attachemnt is created when private
-      endpoint is enabled. To access workstations in the workstation cluster,
-      configure access to the managed service using [Private Service
-      Connect](https://cloud.google.com/vpc/docs/configure-private-service-
-      connect-services).
+    allowedProjects: A string attribute.
+    clusterHostname: A string attribute.
+    enablePrivateEndpoint: A boolean attribute.
+    serviceAttachmentUri: A string attribute.
   """
 
   allowedProjects = _messages.StringField(1, repeated=True)
@@ -1286,6 +1273,8 @@ class Workstation(_messages.Message):
     name: Identifier. Full name of this workstation.
     reconciling: Output only. Indicates whether this workstation is currently
       being updated to match its intended state.
+    sourceWorkstation: Optional. The source workstation from which this
+      workstations persistent directories were cloned on creation.
     startTime: Output only. Time when this workstation was most recently
       successfully started, regardless of the workstation's initial state.
     state: Output only. Current state of the workstation.
@@ -1400,10 +1389,11 @@ class Workstation(_messages.Message):
   labels = _messages.MessageField('LabelsValue', 9)
   name = _messages.StringField(10)
   reconciling = _messages.BooleanField(11)
-  startTime = _messages.StringField(12)
-  state = _messages.EnumField('StateValueValuesEnum', 13)
-  uid = _messages.StringField(14)
-  updateTime = _messages.StringField(15)
+  sourceWorkstation = _messages.StringField(12)
+  startTime = _messages.StringField(13)
+  state = _messages.EnumField('StateValueValuesEnum', 14)
+  uid = _messages.StringField(15)
+  updateTime = _messages.StringField(16)
 
 
 class WorkstationCluster(_messages.Message):
@@ -1545,8 +1535,8 @@ class WorkstationConfig(_messages.Message):
       propagated to the underlying Compute Engine resources.
 
   Fields:
-    allowedPorts: Optional. Single or Range of ports externally accessible in
-      the workstation. If not specified defaults to ports 22, 80 and ports
+    allowedPorts: Optional. A Single or Range of ports externally accessible
+      in the workstation. If not specified defaults to ports 22, 80 and ports
       1024-65535.
     annotations: Optional. Client-specified annotations.
     conditions: Output only. Status conditions describing the current resource

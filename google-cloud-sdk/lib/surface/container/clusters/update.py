@@ -398,6 +398,11 @@ class Update(base.UpdateCommand):
     flags.AddAutoprovisioningEnableKubeletReadonlyPortFlag(group)
     flags.AddEnableRayClusterLogging(group, is_update=True)
     flags.AddEnableRayClusterMonitoring(group, is_update=True)
+    flags.AddSecretManagerEnableFlag(group, hidden=True)
+    flags.AddInsecureRBACBindingFlags(group, hidden=True)
+    group_add_additional_ip_ranges = group.add_group(hidden=True)
+    flags.AddAdditionalIpRangesFlag(group_add_additional_ip_ranges)
+    flags.AddRemoveAdditionalIpRangesFlag(group_add_additional_ip_ranges)
 
   def ParseUpdateOptions(self, args, locations):
     get_default = lambda key: getattr(args, key)
@@ -471,6 +476,8 @@ class Update(base.UpdateCommand):
     opts.removed_additional_pod_ipv4_ranges = (
         args.remove_additional_pod_ipv4_ranges
     )
+    opts.additional_ip_ranges = args.additional_ip_ranges
+    opts.remove_additional_ip_ranges = args.remove_additional_ip_ranges
     opts.stack_type = args.stack_type
     opts.enable_cost_allocation = args.enable_cost_allocation
     opts.gateway_api = args.gateway_api
@@ -504,6 +511,13 @@ class Update(base.UpdateCommand):
     )
     opts.enable_ray_cluster_logging = args.enable_ray_cluster_logging
     opts.enable_ray_cluster_monitoring = args.enable_ray_cluster_monitoring
+    opts.enable_secret_manager = args.enable_secret_manager
+    opts.enable_insecure_binding_system_authenticated = (
+        args.enable_insecure_binding_system_authenticated
+    )
+    opts.enable_insecure_binding_system_unauthenticated = (
+        args.enable_insecure_binding_system_unauthenticated
+    )
     return opts
 
   def Run(self, args):
@@ -547,6 +561,9 @@ class Update(base.UpdateCommand):
           'with this feature enabled. For additional details, please refer to '
           'https://cloud.google.com/kubernetes-engine/docs/how-to/pod-security-policies'
       )
+
+    container_command_util.CheckReleaseChannel(args)
+
     # locations will be None if additional-zones was specified, an empty list
     # if it was specified with no argument, or a populated list if zones were
     # provided. We want to distinguish between the case where it isn't
@@ -828,6 +845,20 @@ to completion."""
         )
       except apitools_exceptions.HttpError as error:
         raise exceptions.HttpException(error, util.HTTP_ERROR_FORMAT)
+    elif (
+        getattr(args, 'enable_insecure_binding_system_authenticated', None)
+        is not None or
+        getattr(args, 'enable_insecure_binding_system_unauthenticated', None)
+        is not None
+    ):
+      try:
+        op_ref = adapter.ModifyRBACBindingConfig(
+            cluster_ref,
+            args.enable_insecure_binding_system_authenticated,
+            args.enable_insecure_binding_system_unauthenticated,
+        )
+      except apitools_exceptions.HttpError as error:
+        raise exceptions.HttpException(error, util.HTTP_ERROR_FORMAT)
     else:
       if args.enable_legacy_authorization is not None:
         op_ref = adapter.SetLegacyAuthorization(
@@ -991,6 +1022,10 @@ class UpdateBeta(Update):
     flags.AddAutoprovisioningEnableKubeletReadonlyPortFlag(group)
     flags.AddEnableRayClusterLogging(group, is_update=True)
     flags.AddEnableRayClusterMonitoring(group, is_update=True)
+    flags.AddInsecureRBACBindingFlags(group, hidden=True)
+    group_add_additional_ip_ranges = group.add_group(hidden=True)
+    flags.AddAdditionalIpRangesFlag(group_add_additional_ip_ranges)
+    flags.AddRemoveAdditionalIpRangesFlag(group_add_additional_ip_ranges)
 
   def ParseUpdateOptions(self, args, locations):
     get_default = lambda key: getattr(args, key)
@@ -1121,6 +1156,8 @@ class UpdateBeta(Update):
     opts.removed_additional_pod_ipv4_ranges = (
         args.remove_additional_pod_ipv4_ranges
     )
+    opts.additional_ip_ranges = args.additional_ip_ranges
+    opts.remove_additional_ip_ranges = args.remove_additional_ip_ranges
     opts.gateway_api = args.gateway_api
     opts.fleet_project = args.fleet_project
     opts.enable_fleet = args.enable_fleet
@@ -1156,6 +1193,12 @@ class UpdateBeta(Update):
     )
     opts.enable_ray_cluster_logging = args.enable_ray_cluster_logging
     opts.enable_ray_cluster_monitoring = args.enable_ray_cluster_monitoring
+    opts.enable_insecure_binding_system_authenticated = (
+        args.enable_insecure_binding_system_authenticated
+    )
+    opts.enable_insecure_binding_system_unauthenticated = (
+        args.enable_insecure_binding_system_unauthenticated
+    )
     return opts
 
 
@@ -1275,6 +1318,10 @@ class UpdateAlpha(Update):
     flags.AddAutoprovisioningEnableKubeletReadonlyPortFlag(group)
     flags.AddEnableRayClusterLogging(group, is_update=True)
     flags.AddEnableRayClusterMonitoring(group, is_update=True)
+    flags.AddInsecureRBACBindingFlags(group, hidden=True)
+    group_add_additional_ip_ranges = group.add_group(hidden=True)
+    flags.AddAdditionalIpRangesFlag(group_add_additional_ip_ranges)
+    flags.AddRemoveAdditionalIpRangesFlag(group_add_additional_ip_ranges)
 
   def ParseUpdateOptions(self, args, locations):
     get_default = lambda key: getattr(args, key)
@@ -1401,6 +1448,8 @@ class UpdateAlpha(Update):
     opts.removed_additional_pod_ipv4_ranges = (
         args.remove_additional_pod_ipv4_ranges
     )
+    opts.additional_ip_ranges = args.additional_ip_ranges
+    opts.remove_additional_ip_ranges = args.remove_additional_ip_ranges
     opts.fleet_project = args.fleet_project
     opts.enable_fleet = args.enable_fleet
     opts.clear_fleet_project = args.clear_fleet_project
@@ -1435,4 +1484,10 @@ class UpdateAlpha(Update):
     )
     opts.enable_ray_cluster_logging = args.enable_ray_cluster_logging
     opts.enable_ray_cluster_monitoring = args.enable_ray_cluster_monitoring
+    opts.enable_insecure_binding_system_authenticated = (
+        args.enable_insecure_binding_system_authenticated
+    )
+    opts.enable_insecure_binding_system_unauthenticated = (
+        args.enable_insecure_binding_system_unauthenticated
+    )
     return opts

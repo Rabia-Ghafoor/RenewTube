@@ -197,6 +197,70 @@ _POSTGRESQL_UPDATE_SOURCE_CONFIG_HELP_TEXT = """\
   ```
 """
 
+_SQLSERVER_CREATE_SOURCE_CONFIG_HELP_TEXT = """
+  Path to a YAML (or JSON) file containing the configuration for SQL Server Source Config.
+
+  The JSON file is formatted as follows, with camelCase field naming:
+
+  ```
+    {
+      "includeObjects": {},
+      "excludeObjects": {
+        "schemas": [
+          {
+            "schema": "SAMPLE",
+            "tables": [
+              {
+                "table": "SAMPLE_TABLE",
+                "columns": [
+                  {
+                    "column": "COL",
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "maxConcurrentCdcTasks": 2,
+      "maxConcurrentBackfillTasks": 10,
+      "transactionLogs": {}  # Or changeTables
+    }
+  ```
+"""
+
+_SQLSERVER_UPDATE_SOURCE_CONFIG_HELP_TEXT = """
+  Path to a YAML (or JSON) file containing the configuration for PostgreSQL Source Config.
+
+  The JSON file is formatted as follows, with camelCase field naming:
+
+  ```
+    {
+      "includeObjects": {},
+      "excludeObjects": {
+        "schemas": [
+          {
+            "schema": "SAMPLE",
+            "tables": [
+              {
+                "table": "SAMPLE_TABLE",
+                "columns": [
+                  {
+                    "column": "COL",
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "maxConcurrentCdcTasks": 2,
+      "maxConcurrentBackfillTasks": 10,
+      "transactionLogs": {}  # Or changeTables
+    }
+  ```
+"""
+
 
 def ConnectionProfileAttributeConfig(name='connection_profile'):
   return concepts.ResourceParameterAttributeConfig(
@@ -480,8 +544,15 @@ def AddStreamResourceArg(parser, verb, release_track, required=True):
       == base.ReleaseTrack.BETA else _MYSQL_SOURCE_CONFIG_HELP_TEXT)
   source_config_parser_group.add_argument(
       '--postgresql-source-config',
-      help=_POSTGRESQL_UPDATE_SOURCE_CONFIG_HELP_TEXT if verb == 'update'
-      else _POSTGRESQL_CREATE_SOURCE_CONFIG_HELP_TEXT
+      help=_POSTGRESQL_UPDATE_SOURCE_CONFIG_HELP_TEXT
+      if verb == 'update'
+      else _POSTGRESQL_CREATE_SOURCE_CONFIG_HELP_TEXT,
+  )
+  source_config_parser_group.add_argument(
+      '--sqlserver-source-config',
+      help=_SQLSERVER_UPDATE_SOURCE_CONFIG_HELP_TEXT
+      if verb == 'update'
+      else _SQLSERVER_CREATE_SOURCE_CONFIG_HELP_TEXT,
   )
 
   destination_parser = parser.add_group(required=required)
@@ -509,7 +580,9 @@ def AddStreamResourceArg(parser, verb, release_track, required=True):
       help="""\
       Path to a YAML (or JSON) file containing the configuration for Google BigQuery Destination Config.
 
-      The JSON file is formatted as follows:
+      The YAML (or JSON) file should be formatted as follows:
+
+      BigQuery configuration with source hierarchy datasets and merge mode (merge mode is by default):
 
       ```
       {
@@ -520,6 +593,33 @@ def AddStreamResourceArg(parser, verb, release_track, required=True):
             "kmsKeyName": "projects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{cryptoKey}"
           }
         },
+        "merge": {}
+        "dataFreshness": "3600s"
+      }
+      ```
+
+      BigQuery configuration with source hierarchy datasets and append only mode:
+      ```
+      {
+        "sourceHierarchyDatasets": {
+          "datasetTemplate": {
+            "location": "us-central1",
+            "datasetIdPrefix": "my_prefix",
+            "kmsKeyName": "projects/{project}/locations/{location}/keyRings/{key_ring}/cryptoKeys/{cryptoKey}"
+          }
+        },
+        "appendOnly": {}
+      }
+      ```
+
+      BigQuery configuration with single target dataset and merge mode:
+
+      ```
+      {
+        "singleTargetDataset": {
+          "datasetId": "projectId:my_dataset"
+        },
+        "merge": {}
         "dataFreshness": "3600s"
       }
       ```

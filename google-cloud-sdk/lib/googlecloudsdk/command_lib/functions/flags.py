@@ -979,8 +979,8 @@ def AddRuntimeUpdatePolicy(parser, track):
         '--runtime-update-policy',
         choices=RUNTIME_UPDATE_POLICY_MAPPING.values(),
         help="""\
-        Runtime update policy for the 1st gen function being deployed.
-        The option `on-deploy` is used by default.
+        Runtime update policy for the function being deployed. The option
+        `automatic` is used by default.
       """,
     )
 
@@ -1143,15 +1143,23 @@ def _ValidateJsonOrRaiseError(data, arg_name):
     )
 
 
-def AddBuildServiceAccountFlag(parser, track):
-  if track in (base.ReleaseTrack.ALPHA, base.ReleaseTrack.BETA):
-    parser.add_argument(
-        '--build-service-account',
-        help="""\
-            IAM service account whose credentials will be used for the build step.
-            Must be of the format projects/${PROJECT_ID}/serviceAccounts/${ACCOUNT_EMAIL_ADDRESS}.
+def AddBuildServiceAccountFlag(parser):
+  """Adds flags for configuring the build service account for Cloud Function."""
+  mutex_group = parser.add_group(mutex=True)
+  mutex_group.add_argument(
+      '--build-service-account',
+      help="""\
+          IAM service account whose credentials will be used for the build step.
+          Must be of the format projects/${PROJECT_ID}/serviceAccounts/${ACCOUNT_EMAIL_ADDRESS}.
 
-            If not provided, the function will use the project's default
-            service account for Cloud Build.
-        """,
-    )
+          If not provided, the function will use the project's default
+          service account for Cloud Build.
+      """,
+  )
+  mutex_group.add_argument(
+      '--clear-build-service-account',
+      action='store_true',
+      help="""\
+          Clears the build service account field.
+      """,
+  )

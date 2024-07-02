@@ -99,6 +99,21 @@ class ApiWarning(_messages.Message):
   region = _messages.StringField(3)
 
 
+class AvailableDatabaseVersion(_messages.Message):
+  r"""An available database version. It can be a major or a minor version.
+
+  Fields:
+    displayName: The database version's display name.
+    majorVersion: The version's major version name.
+    name: The database version name. For MySQL 8.0, this string provides the
+      database major and minor version.
+  """
+
+  displayName = _messages.StringField(1)
+  majorVersion = _messages.StringField(2)
+  name = _messages.StringField(3)
+
+
 class Backup(_messages.Message):
   r"""A Backup resource.
 
@@ -662,6 +677,8 @@ class ConnectSettings(_messages.Message):
       MYSQL_8_0_40: The database major version is MySQL 8.0 and the minor
         version is 40.
       MYSQL_8_4: The database version is MySQL 8.4.
+      MYSQL_8_4_0: The database version is MySQL 8.4 and the patch version is
+        0.
       SQLSERVER_2019_STANDARD: The database version is SQL Server 2019
         Standard.
       SQLSERVER_2019_ENTERPRISE: The database version is SQL Server 2019
@@ -710,14 +727,15 @@ class ConnectSettings(_messages.Message):
     MYSQL_8_0_39 = 32
     MYSQL_8_0_40 = 33
     MYSQL_8_4 = 34
-    SQLSERVER_2019_STANDARD = 35
-    SQLSERVER_2019_ENTERPRISE = 36
-    SQLSERVER_2019_EXPRESS = 37
-    SQLSERVER_2019_WEB = 38
-    SQLSERVER_2022_STANDARD = 39
-    SQLSERVER_2022_ENTERPRISE = 40
-    SQLSERVER_2022_EXPRESS = 41
-    SQLSERVER_2022_WEB = 42
+    MYSQL_8_4_0 = 35
+    SQLSERVER_2019_STANDARD = 36
+    SQLSERVER_2019_ENTERPRISE = 37
+    SQLSERVER_2019_EXPRESS = 38
+    SQLSERVER_2019_WEB = 39
+    SQLSERVER_2022_STANDARD = 40
+    SQLSERVER_2022_ENTERPRISE = 41
+    SQLSERVER_2022_EXPRESS = 42
+    SQLSERVER_2022_WEB = 43
 
   backendType = _messages.EnumField('BackendTypeValueValuesEnum', 1)
   databaseVersion = _messages.EnumField('DatabaseVersionValueValuesEnum', 2)
@@ -850,6 +868,8 @@ class DatabaseInstance(_messages.Message):
       property was applicable only to First Generation instances.
     kind: This is always `sql#instance`.
     maintenanceVersion: The current software version on the instance.
+    majorVersionUpgradeIncludesReplicas: Input only. Allows for Cluster Major
+      Version Upgrade
     masterInstanceName: The name of the instance which will act as primary in
       the replication setup.
     maxDiskSize: The maximum disk size of the instance in bytes.
@@ -897,6 +917,11 @@ class DatabaseInstance(_messages.Message):
     state: The current serving state of the Cloud SQL instance.
     suspensionReason: If the instance state is SUSPENDED, the reason for the
       suspension.
+    switchTransactionLogsToCloudStorageEnabled: Input only. Whether Cloud SQL
+      is enabled to switch storing point-in-time recovery log files from a
+      data disk to Cloud Storage.
+    upgradableDatabaseVersions: Output only. All database versions that are
+      available for upgrade.
     writeEndpoint: Output only. The dns name of the primary instance in a
       replication group.
   """
@@ -977,6 +1002,8 @@ class DatabaseInstance(_messages.Message):
       MYSQL_8_0_40: The database major version is MySQL 8.0 and the minor
         version is 40.
       MYSQL_8_4: The database version is MySQL 8.4.
+      MYSQL_8_4_0: The database version is MySQL 8.4 and the patch version is
+        0.
       SQLSERVER_2019_STANDARD: The database version is SQL Server 2019
         Standard.
       SQLSERVER_2019_ENTERPRISE: The database version is SQL Server 2019
@@ -1025,14 +1052,15 @@ class DatabaseInstance(_messages.Message):
     MYSQL_8_0_39 = 32
     MYSQL_8_0_40 = 33
     MYSQL_8_4 = 34
-    SQLSERVER_2019_STANDARD = 35
-    SQLSERVER_2019_ENTERPRISE = 36
-    SQLSERVER_2019_EXPRESS = 37
-    SQLSERVER_2019_WEB = 38
-    SQLSERVER_2022_STANDARD = 39
-    SQLSERVER_2022_ENTERPRISE = 40
-    SQLSERVER_2022_EXPRESS = 41
-    SQLSERVER_2022_WEB = 42
+    MYSQL_8_4_0 = 35
+    SQLSERVER_2019_STANDARD = 36
+    SQLSERVER_2019_ENTERPRISE = 37
+    SQLSERVER_2019_EXPRESS = 38
+    SQLSERVER_2019_WEB = 39
+    SQLSERVER_2022_STANDARD = 40
+    SQLSERVER_2022_ENTERPRISE = 41
+    SQLSERVER_2022_EXPRESS = 42
+    SQLSERVER_2022_WEB = 43
 
   class InstalledVersionValueValuesEnum(_messages.Enum):
     r"""Stores the current database version including minor version such as
@@ -1092,6 +1120,8 @@ class DatabaseInstance(_messages.Message):
       MYSQL_8_0_40: The database major version is MySQL 8.0 and the minor
         version is 40.
       MYSQL_8_4: The database version is MySQL 8.4.
+      MYSQL_8_4_0: The database version is MySQL 8.4 and the patch version is
+        0.
       SQLSERVER_2019_STANDARD: The database version is SQL Server 2019
         Standard.
       SQLSERVER_2019_ENTERPRISE: The database version is SQL Server 2019
@@ -1140,14 +1170,15 @@ class DatabaseInstance(_messages.Message):
     MYSQL_8_0_39 = 32
     MYSQL_8_0_40 = 33
     MYSQL_8_4 = 34
-    SQLSERVER_2019_STANDARD = 35
-    SQLSERVER_2019_ENTERPRISE = 36
-    SQLSERVER_2019_EXPRESS = 37
-    SQLSERVER_2019_WEB = 38
-    SQLSERVER_2022_STANDARD = 39
-    SQLSERVER_2022_ENTERPRISE = 40
-    SQLSERVER_2022_EXPRESS = 41
-    SQLSERVER_2022_WEB = 42
+    MYSQL_8_4_0 = 35
+    SQLSERVER_2019_STANDARD = 36
+    SQLSERVER_2019_ENTERPRISE = 37
+    SQLSERVER_2019_EXPRESS = 38
+    SQLSERVER_2019_WEB = 39
+    SQLSERVER_2022_STANDARD = 40
+    SQLSERVER_2022_ENTERPRISE = 41
+    SQLSERVER_2022_EXPRESS = 42
+    SQLSERVER_2022_WEB = 43
 
   class InstanceTypeValueValuesEnum(_messages.Enum):
     r"""The instance type.
@@ -1260,30 +1291,33 @@ class DatabaseInstance(_messages.Message):
   ipv6Address = _messages.StringField(18)
   kind = _messages.StringField(19)
   maintenanceVersion = _messages.StringField(20)
-  masterInstanceName = _messages.StringField(21)
-  maxDiskSize = _messages.IntegerField(22)
-  name = _messages.StringField(23)
-  onPremisesConfiguration = _messages.MessageField('OnPremisesConfiguration', 24)
-  outOfDiskReport = _messages.MessageField('SqlOutOfDiskReport', 25)
-  primaryDnsName = _messages.StringField(26)
-  project = _messages.StringField(27)
-  pscServiceAttachmentLink = _messages.StringField(28)
-  region = _messages.StringField(29)
-  replicaConfiguration = _messages.MessageField('ReplicaConfiguration', 30)
-  replicaNames = _messages.StringField(31, repeated=True)
-  replicationCluster = _messages.MessageField('ReplicationCluster', 32)
-  rootPassword = _messages.StringField(33)
-  satisfiesPzs = _messages.BooleanField(34)
-  scheduledMaintenance = _messages.MessageField('SqlScheduledMaintenance', 35)
-  secondaryGceZone = _messages.StringField(36)
-  selfLink = _messages.StringField(37)
-  serverCaCert = _messages.MessageField('SslCert', 38)
-  serviceAccountEmailAddress = _messages.StringField(39)
-  settings = _messages.MessageField('Settings', 40)
-  sqlNetworkArchitecture = _messages.EnumField('SqlNetworkArchitectureValueValuesEnum', 41)
-  state = _messages.EnumField('StateValueValuesEnum', 42)
-  suspensionReason = _messages.EnumField('SuspensionReasonValueListEntryValuesEnum', 43, repeated=True)
-  writeEndpoint = _messages.StringField(44)
+  majorVersionUpgradeIncludesReplicas = _messages.BooleanField(21)
+  masterInstanceName = _messages.StringField(22)
+  maxDiskSize = _messages.IntegerField(23)
+  name = _messages.StringField(24)
+  onPremisesConfiguration = _messages.MessageField('OnPremisesConfiguration', 25)
+  outOfDiskReport = _messages.MessageField('SqlOutOfDiskReport', 26)
+  primaryDnsName = _messages.StringField(27)
+  project = _messages.StringField(28)
+  pscServiceAttachmentLink = _messages.StringField(29)
+  region = _messages.StringField(30)
+  replicaConfiguration = _messages.MessageField('ReplicaConfiguration', 31)
+  replicaNames = _messages.StringField(32, repeated=True)
+  replicationCluster = _messages.MessageField('ReplicationCluster', 33)
+  rootPassword = _messages.StringField(34)
+  satisfiesPzs = _messages.BooleanField(35)
+  scheduledMaintenance = _messages.MessageField('SqlScheduledMaintenance', 36)
+  secondaryGceZone = _messages.StringField(37)
+  selfLink = _messages.StringField(38)
+  serverCaCert = _messages.MessageField('SslCert', 39)
+  serviceAccountEmailAddress = _messages.StringField(40)
+  settings = _messages.MessageField('Settings', 41)
+  sqlNetworkArchitecture = _messages.EnumField('SqlNetworkArchitectureValueValuesEnum', 42)
+  state = _messages.EnumField('StateValueValuesEnum', 43)
+  suspensionReason = _messages.EnumField('SuspensionReasonValueListEntryValuesEnum', 44, repeated=True)
+  switchTransactionLogsToCloudStorageEnabled = _messages.BooleanField(45)
+  upgradableDatabaseVersions = _messages.MessageField('AvailableDatabaseVersion', 46, repeated=True)
+  writeEndpoint = _messages.StringField(47)
 
 
 class DatabasesListResponse(_messages.Message):
@@ -1735,6 +1769,8 @@ class Flag(_messages.Message):
       MYSQL_8_0_40: The database major version is MySQL 8.0 and the minor
         version is 40.
       MYSQL_8_4: The database version is MySQL 8.4.
+      MYSQL_8_4_0: The database version is MySQL 8.4 and the patch version is
+        0.
       SQLSERVER_2019_STANDARD: The database version is SQL Server 2019
         Standard.
       SQLSERVER_2019_ENTERPRISE: The database version is SQL Server 2019
@@ -1783,14 +1819,15 @@ class Flag(_messages.Message):
     MYSQL_8_0_39 = 32
     MYSQL_8_0_40 = 33
     MYSQL_8_4 = 34
-    SQLSERVER_2019_STANDARD = 35
-    SQLSERVER_2019_ENTERPRISE = 36
-    SQLSERVER_2019_EXPRESS = 37
-    SQLSERVER_2019_WEB = 38
-    SQLSERVER_2022_STANDARD = 39
-    SQLSERVER_2022_ENTERPRISE = 40
-    SQLSERVER_2022_EXPRESS = 41
-    SQLSERVER_2022_WEB = 42
+    MYSQL_8_4_0 = 35
+    SQLSERVER_2019_STANDARD = 36
+    SQLSERVER_2019_ENTERPRISE = 37
+    SQLSERVER_2019_EXPRESS = 38
+    SQLSERVER_2019_WEB = 39
+    SQLSERVER_2022_STANDARD = 40
+    SQLSERVER_2022_ENTERPRISE = 41
+    SQLSERVER_2022_EXPRESS = 42
+    SQLSERVER_2022_WEB = 43
 
   class TypeValueValuesEnum(_messages.Enum):
     r"""The type of the flag. Flags are typed to being `BOOLEAN`, `STRING`,
@@ -2301,6 +2338,8 @@ class IpConfiguration(_messages.Message):
   r"""IP Management configuration.
 
   Enums:
+    ServerCaModeValueValuesEnum: Specify what type of CA is used for the
+      server certificate.
     SslModeValueValuesEnum: Specify how SSL/TLS is enforced in database
       connections. If you must use the `require_ssl` flag for backward
       compatibility, then only the following value pairs are valid: For
@@ -2343,6 +2382,7 @@ class IpConfiguration(_messages.Message):
       then use the `ssl_mode` flag instead of the legacy `require_ssl` flag.
     reservedIpRange: This field is deprecated and will be removed from a
       future version of the API.
+    serverCaMode: Specify what type of CA is used for the server certificate.
     sslMode: Specify how SSL/TLS is enforced in database connections. If you
       must use the `require_ssl` flag for backward compatibility, then only
       the following value pairs are valid: For PostgreSQL and MySQL: *
@@ -2358,6 +2398,20 @@ class IpConfiguration(_messages.Message):
       connections. In this case, MySQL and PostgreSQL databases respect
       `ssl_mode` and accepts only SSL connections.
   """
+
+  class ServerCaModeValueValuesEnum(_messages.Enum):
+    r"""Specify what type of CA is used for the server certificate.
+
+    Values:
+      CA_MODE_UNSPECIFIED: CA mode is unknown.
+      GOOGLE_MANAGED_INTERNAL_CA: Google-managed self-signed internal CA.
+      GOOGLE_MANAGED_CAS_CA: Google-managed regional CA part of root CA
+        hierarchy hosted on Google Cloud's Certificate Authority Service
+        (CAS).
+    """
+    CA_MODE_UNSPECIFIED = 0
+    GOOGLE_MANAGED_INTERNAL_CA = 1
+    GOOGLE_MANAGED_CAS_CA = 2
 
   class SslModeValueValuesEnum(_messages.Enum):
     r"""Specify how SSL/TLS is enforced in database connections. If you must
@@ -2412,7 +2466,8 @@ class IpConfiguration(_messages.Message):
   pscConfig = _messages.MessageField('PscConfig', 6)
   requireSsl = _messages.BooleanField(7)
   reservedIpRange = _messages.StringField(8)
-  sslMode = _messages.EnumField('SslModeValueValuesEnum', 9)
+  serverCaMode = _messages.EnumField('ServerCaModeValueValuesEnum', 9)
+  sslMode = _messages.EnumField('SslModeValueValuesEnum', 10)
 
 
 class IpMapping(_messages.Message):
@@ -2513,38 +2568,41 @@ class MaintenanceWindow(_messages.Message):
   restarted for system maintenance purposes.
 
   Enums:
-    UpdateTrackValueValuesEnum: Maintenance timing setting: `canary` (Earlier)
-      or `stable` (Later). [Learn
-      more](https://cloud.google.com/sql/docs/mysql/instance-
-      settings#maintenance-timing-2ndgen).
+    UpdateTrackValueValuesEnum: Maintenance timing settings: `canary`,
+      `stable`, or `week5`. For more information, see [About maintenance on
+      Cloud SQL
+      instances](https://cloud.google.com/sql/docs/mysql/maintenance).
 
   Fields:
-    day: day of week (1-7), starting on Monday.
-    hour: hour of day - 0 to 23.
+    day: Day of week - `MONDAY`, `TUESDAY`, `WEDNESDAY`, `THURSDAY`, `FRIDAY`,
+      `SATURDAY`, or `SUNDAY`. Specify in the UTC time zone. Returned in
+      output as an integer, 1 to 7, where `1` equals Monday.
+    hour: Hour of day - 0 to 23. Specify in the UTC time zone.
     kind: This is always `sql#maintenanceWindow`.
-    updateTrack: Maintenance timing setting: `canary` (Earlier) or `stable`
-      (Later). [Learn more](https://cloud.google.com/sql/docs/mysql/instance-
-      settings#maintenance-timing-2ndgen).
+    updateTrack: Maintenance timing settings: `canary`, `stable`, or `week5`.
+      For more information, see [About maintenance on Cloud SQL
+      instances](https://cloud.google.com/sql/docs/mysql/maintenance).
   """
 
   class UpdateTrackValueValuesEnum(_messages.Enum):
-    r"""Maintenance timing setting: `canary` (Earlier) or `stable` (Later).
-    [Learn more](https://cloud.google.com/sql/docs/mysql/instance-
-    settings#maintenance-timing-2ndgen).
+    r"""Maintenance timing settings: `canary`, `stable`, or `week5`. For more
+    information, see [About maintenance on Cloud SQL
+    instances](https://cloud.google.com/sql/docs/mysql/maintenance).
 
     Values:
       SQL_UPDATE_TRACK_UNSPECIFIED: This is an unknown maintenance timing
         preference.
-      canary: For instance update that requires a restart, this update track
-        indicates your instance prefer to restart for new version early in
-        maintenance window.
-      stable: For instance update that requires a restart, this update track
-        indicates your instance prefer to let Cloud SQL choose the timing of
-        restart (within its Maintenance window, if applicable).
-      week5: For instance update that requires a restart, this update track
-        indicates your instance prefer to let Cloud SQL choose the timing of
-        restart (within its Maintenance window, if applicable) to be at least
-        5 weeks after the notification.
+      canary: For an instance with a scheduled maintenance window, this
+        maintenance timing indicates that the maintenance update is scheduled
+        7 to 14 days after the notification is sent out. Also referred to as
+        `Week 1` (Console) and `preview` (gcloud CLI).
+      stable: For an instance with a scheduled maintenance window, this
+        maintenance timing indicates that the maintenance update is scheduled
+        15 to 21 days after the notification is sent out. Also referred to as
+        `Week 2` (Console) and `production` (gcloud CLI).
+      week5: For instance with a scheduled maintenance window, this
+        maintenance timing indicates that the maintenance update is scheduled
+        35 to 42 days after the notification is sent out.
     """
     SQL_UPDATE_TRACK_UNSPECIFIED = 0
     canary = 1
@@ -3154,8 +3212,8 @@ class Settings(_messages.Message):
       not activated, even if a connection request arrives.
     activeDirectoryConfig: Active Directory configuration, relevant only for
       Cloud SQL for SQL Server.
-    advancedMachineFeatures: Specifies advance machine configuration for the
-      instance relevant only for SQL Server.
+    advancedMachineFeatures: Specifies advanced machine configuration for the
+      instances relevant only for SQL Server.
     authorizedGaeApplications: The App Engine app IDs that can access this
       instance. (Deprecated) Applied to First Generation instances only.
     availabilityType: Availability type. Potential values: * `ZONAL`: The
@@ -3788,6 +3846,17 @@ class SqlExternalSyncSettingError(_messages.Message):
       INSUFFICIENT_MACHINE_TIER: The data size of the source instance is
         greater than 1 TB, the number of cores of the replica instance is less
         than 8, and the memory of the replica is less than 32 GB.
+      UNSUPPORTED_EXTENSIONS_NOT_MIGRATED: The warning message indicates the
+        unsupported extensions will not be migrated to the destination.
+      EXTENSIONS_NOT_MIGRATED: The warning message indicates the pg_cron
+        extension and settings will not be migrated to the destination.
+      PG_CRON_FLAG_ENABLED_IN_REPLICA: The error message indicates that
+        pg_cron flags are enabled on the destination which is not supported
+        during the migration.
+      EXTENSIONS_NOT_ENABLED_IN_REPLICA: This error message indicates that the
+        specified extensions are not enabled on destination instance. For
+        example, before you can migrate data to the destination instance, you
+        must enable the PGAudit extension on the instance.
     """
     SQL_EXTERNAL_SYNC_SETTING_ERROR_TYPE_UNSPECIFIED = 0
     CONNECTION_FAILURE = 1
@@ -3834,6 +3903,10 @@ class SqlExternalSyncSettingError(_messages.Message):
     PG_SYNC_PARALLEL_LEVEL = 42
     INSUFFICIENT_DISK_SIZE = 43
     INSUFFICIENT_MACHINE_TIER = 44
+    UNSUPPORTED_EXTENSIONS_NOT_MIGRATED = 45
+    EXTENSIONS_NOT_MIGRATED = 46
+    PG_CRON_FLAG_ENABLED_IN_REPLICA = 47
+    EXTENSIONS_NOT_ENABLED_IN_REPLICA = 48
 
   detail = _messages.StringField(1)
   kind = _messages.StringField(2)
@@ -3922,6 +3995,11 @@ class SqlInstancesDeleteRequest(_messages.Message):
     instance: Cloud SQL instance ID. This does not include the project ID.
     project: Project ID of the project that contains the instance to be
       deleted.
+    retainBackups: Flag to opt-in for keep all visible backups after deleting
+      the instance. Currently, this only applies to the backups, the PITR GCS
+      bucket is not retained yet. By default, it is turned off.
+    retainBackupsExpiryTime: Expiration timestamp in UTC.
+    retainBackupsTtlDays: Retention period in days.
     skipFinalBackup: Deprecated field, please use enable_final_backup
   """
 
@@ -3931,7 +4009,10 @@ class SqlInstancesDeleteRequest(_messages.Message):
   finalBackupTtlDays = _messages.IntegerField(4)
   instance = _messages.StringField(5, required=True)
   project = _messages.StringField(6, required=True)
-  skipFinalBackup = _messages.BooleanField(7)
+  retainBackups = _messages.BooleanField(7)
+  retainBackupsExpiryTime = _messages.StringField(8)
+  retainBackupsTtlDays = _messages.IntegerField(9)
+  skipFinalBackup = _messages.BooleanField(10)
 
 
 class SqlInstancesDemoteMasterRequest(_messages.Message):

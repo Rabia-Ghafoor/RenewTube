@@ -107,6 +107,7 @@ def _GetResult(compute_client, request, operation_group_id):
   return result
 
 
+@base.UniverseCompatible
 @base.ReleaseTracks(base.ReleaseTrack.GA)
 class Create(base.Command):
   """Create Compute Engine virtual machine instances."""
@@ -131,13 +132,13 @@ class Create(base.Command):
   _support_visible_core_count = True
   _support_max_run_duration = False
   _support_enable_target_shape = True
-  _support_confidential_compute_type = False
+  _support_confidential_compute_type = True
   _support_confidential_compute_type_tdx = False
   _support_no_address_in_networking = True
   _support_max_count_per_zone = True
   _support_local_ssd_recovery_timeout = True
   _support_network_queue_count = True
-  _support_performance_monitoring_unit = False
+  _support_performance_monitoring_unit = True
   _support_custom_hostnames = False
   _support_specific_then_x_affinity = False
   _support_watchdog_timer = False
@@ -359,7 +360,7 @@ class CreateBeta(Create):
   _support_local_ssd_recovery_timeout = True
   _support_network_queue_count = True
   _support_local_ssd_size = True
-  _support_performance_monitoring_unit = False
+  _support_performance_monitoring_unit = True
   _support_custom_hostnames = True
   _support_specific_then_x_affinity = True
   _support_watchdog_timer = False

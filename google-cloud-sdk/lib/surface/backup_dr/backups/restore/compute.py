@@ -66,6 +66,18 @@ class Compute(base.Command):
     compute_flags.AddNetworkInterfaceArg(parser, False)
     compute_flags.AddServiceAccountArg(parser, False)
     compute_flags.AddScopesArg(parser, False)
+    compute_flags.AddCreateDiskArg(parser, False)
+    compute_flags.AddDescriptionArg(parser, False)
+    compute_flags.AddMetadataArg(parser, False)
+    compute_flags.AddLabelsArg(parser, False)
+    compute_flags.AddTagsArg(parser, False)
+    compute_flags.AddMachineTypeArg(parser, False)
+    compute_flags.AddHostnameArg(parser, False)
+    compute_flags.AddEnableUefiNetworkingArg(parser, False)
+    compute_flags.AddThreadsPerCoreArg(parser, False)
+    compute_flags.AddVisibleCoreCountArg(parser, False)
+    compute_flags.AddAcceleratorArg(parser, False)
+    compute_flags.AddMinCpuPlatform(parser, False)
 
   def Run(self, args):
     """Constructs and sends request.
@@ -92,6 +104,40 @@ class Compute(base.Command):
     if args.scopes:
       restore_config['Scopes'] = args.scopes
     restore_config['NoScopes'] = args.no_scopes if args.no_scopes else False
+    if args.create_disk:
+      restore_config['CreateDisks'] = args.create_disk
+    if args.description:
+      restore_config['Description'] = args.description
+    if args.metadata:
+      restore_config['Metadata'] = args.metadata
+    if args.labels:
+      restore_config['Labels'] = args.labels
+    if args.tags:
+      restore_config['Tags'] = args.tags
+    if args.machine_type:
+      if not args.machine_type.startswith('projects/'):
+        args.machine_type = 'projects/{}/zones/{}/machineTypes/{}'.format(
+            args.target_project, args.target_zone, args.machine_type
+        )
+      restore_config['MachineType'] = args.machine_type
+    if args.hostname:
+      restore_config['Hostname'] = args.hostname
+    if args.enable_uefi_networking:
+      restore_config['EnableUefiNetworking'] = args.enable_uefi_networking
+    if args.threads_per_core:
+      restore_config['ThreadsPerCore'] = args.threads_per_core
+    if args.visible_core_count:
+      restore_config['VisibleCoreCount'] = args.visible_core_count
+    if args.accelerator:
+      if not args.accelerator['type'].startswith('projects/'):
+        args.accelerator['type'] = (
+            'projects/{}/zones/{}/acceleratorTypes/{}'.format(
+                args.target_project, args.target_zone, args.accelerator['type']
+            )
+        )
+      restore_config['Accelerator'] = args.accelerator
+    if args.min_cpu_platform:
+      restore_config['MinCpuPlatform'] = args.min_cpu_platform
 
     try:
       operation = client.RestoreCompute(backup, restore_config)

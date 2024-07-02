@@ -814,10 +814,9 @@ def _GetBuildConfig(
   if args.build_worker_pool is not None or args.clear_build_worker_pool:
     updated_fields.add('build_config.worker_pool')
 
-  service_account = None
-  if args.IsKnownAndSpecified('build_service_account'):
+  service_account = args.build_service_account
+  if service_account is not None or args.clear_build_service_account:
     updated_fields.add('build_config.service_account')
-    service_account = args.build_service_account
   messages = client.MESSAGES_MODULE
 
   automatic_update_policy = None
@@ -1045,7 +1044,6 @@ def _SetDockerRepositoryConfig(
     args: parser_extensions.Namespace,
     function: api_types.Function,
     existing_function: Optional[api_types.Function],
-    function_ref: resources.Resource,
 ) -> FrozenSet[str]:
   """Sets user-provided docker repository field on the function.
 
@@ -1055,7 +1053,6 @@ def _SetDockerRepositoryConfig(
       GCF function.
     existing_function: `cloudfunctions_v2_messages.Function | None`,
       pre-existing function.
-    function_ref: resource reference.
 
   Returns:
     A set of update mask fields.
@@ -1066,10 +1063,6 @@ def _SetDockerRepositoryConfig(
       if existing_function
       else None
   )
-  if args.IsSpecified('docker_repository'):
-    cmek_util.ValidateDockerRepositoryForFunction(
-        args.docker_repository, function_ref
-    )
   if args.IsSpecified('docker_repository') or args.IsSpecified(
       'clear_docker_repository'
   ):
@@ -1227,6 +1220,15 @@ def Run(
         "Function already exists in 1st gen, can't change the environment.",
     )
   runtime = args.runtime or existing_function.buildConfig.runtime
+  if runtime and runtime not in gen2_runtimes:
+    raise exceptions.InvalidArgumentException(
+        '--runtime',
+        (
+            f'{runtime} is not a supported runtime on GCF 2nd gen. '
+            'Use `gcloud functions runtimes list` to get a '
+            'list of available runtimes'
+        )
+    )
   if runtime in gen2_runtimes and gen2_runtimes[runtime]['warnings']:
     for w in gen2_runtimes[runtime]['warnings']:
       log.warning(w)
@@ -1273,7 +1275,7 @@ def Run(
       args, function, existing_function, function_ref
   )
   docker_repository_updated_fields = _SetDockerRepositoryConfig(
-      args, function, existing_function, function_ref
+      args, function, existing_function
   )
 
   api_enablement.PromptToEnableApiIfDisabled('run.googleapis.com')

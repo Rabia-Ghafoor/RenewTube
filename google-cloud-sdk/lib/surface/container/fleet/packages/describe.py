@@ -33,7 +33,6 @@ _DETAILED_HELP = {
 _ROLLOUT_BASENAME_INDEX = 7
 
 
-@base.Hidden
 @base.DefaultUniverseOnly
 @base.ReleaseTracks(base.ReleaseTrack.ALPHA)
 class Describe(base.DescribeCommand):
@@ -51,7 +50,7 @@ class Describe(base.DescribeCommand):
         prefixes=False,
     ).AddToParser(parser)
     parser.display_info.AddTransforms(
-        {'trim_message': utils.TransformTrimMessage}
+        {'all_messages': utils.TransformAllClusterLevelMessages}
     )
     parser.add_argument(
         '--show-cluster-status',

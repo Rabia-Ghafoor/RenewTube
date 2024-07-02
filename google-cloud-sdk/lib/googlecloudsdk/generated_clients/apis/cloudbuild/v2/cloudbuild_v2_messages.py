@@ -216,7 +216,7 @@ class BitbucketDataCenterConfig(_messages.Message):
   Fields:
     authorizerCredential: Required. A http access token with the `REPO_ADMIN`
       scope access.
-    hostUri: Optional. The URI of the Bitbucket Data Center instance or
+    hostUri: Required. The URI of the Bitbucket Data Center instance or
       cluster this connection is for.
     readAuthorizerCredential: Required. A http access token with the
       `REPO_READ` access.
@@ -1302,18 +1302,24 @@ class EventSource(_messages.Message):
   Fields:
     eventSource: Output only. The fully qualified resource name for the event
       source.
+    gitRepoLink: Resource name of Developer Connect GitRepositoryLink.
     gitRepositoryLink: Output only. Resource name of Developer Connect
       GitRepositoryLink.
     id: identification to Resource.
     repository: Output only. Resource name of GCB v2 repo.
-    subscription: Output only. Resource name of PubSub subscription.
+    subscription: Output only. Resource name of Pub/Sub subscription.
+    topic: Resource name of Pub/Sub topic.
+    url: SCM Repo URL.
   """
 
   eventSource = _messages.StringField(1)
-  gitRepositoryLink = _messages.StringField(2)
-  id = _messages.StringField(3)
-  repository = _messages.StringField(4)
-  subscription = _messages.StringField(5)
+  gitRepoLink = _messages.StringField(2)
+  gitRepositoryLink = _messages.StringField(3)
+  id = _messages.StringField(4)
+  repository = _messages.StringField(5)
+  subscription = _messages.StringField(6)
+  topic = _messages.StringField(7)
+  url = _messages.StringField(8)
 
 
 class ExecAction(_messages.Message):
@@ -1337,6 +1343,7 @@ class ExecutionEnvironment(_messages.Message):
 
   Fields:
     workerPool: Required. The workerpool used to run the PipelineRun.
+      Deprecated; please use workflow_options.worker_pool instead.
   """
 
   workerPool = _messages.StringField(1)
@@ -1624,20 +1631,6 @@ class GoogleDevtoolsCloudbuildV2OperationMetadata(_messages.Message):
   statusMessage = _messages.StringField(5)
   target = _messages.StringField(6)
   verb = _messages.StringField(7)
-
-
-class GoogleDevtoolsCloudbuildV2SecretManagerSecret(_messages.Message):
-  r"""Pairs a secret environment variable with a SecretVersion in Secret
-  Manager.
-
-  Fields:
-    env: Environment variable name to associate with the secret.
-    secretVersion: Resource name of the SecretVersion. In format:
-      projects/*/secrets/*/versions/*
-  """
-
-  env = _messages.StringField(1)
-  secretVersion = _messages.StringField(2)
 
 
 class GoogleDevtoolsCloudbuildV2ServiceDirectoryConfig(_messages.Message):
@@ -2236,12 +2229,14 @@ class PipelineRef(_messages.Message):
       GIT: Simple Git resolver. https://tekton.dev/docs/pipelines/git-
         resolver/
       DEVELOPER_CONNECT: Developer Connect resolver.
+      DEFAULT: Default resolver.
     """
     RESOLVER_NAME_UNSPECIFIED = 0
     BUNDLES = 1
     GCB_REPO = 2
     GIT = 3
     DEVELOPER_CONNECT = 4
+    DEFAULT = 5
 
   name = _messages.StringField(1)
   params = _messages.MessageField('Param', 2, repeated=True)
@@ -3363,12 +3358,18 @@ class Step(_messages.Message):
   r"""Step embeds the Container type, which allows it to include fields not
   provided by Container.
 
+  Enums:
+    OnErrorValueValuesEnum: Optional. OnError defines the exiting behavior on
+      error can be set to [ continue | stopAndFail ]
+
   Fields:
     args: Arguments to the entrypoint.
     command: Entrypoint array.
     env: List of environment variables to set in the container.
     image: Docker image name.
     name: Name of the container specified as a DNS_LABEL.
+    onError: Optional. OnError defines the exiting behavior on error can be
+      set to [ continue | stopAndFail ]
     params: Optional. Optional parameters passed to the StepAction.
     ref: Optional. Optional reference to a remote StepAction.
     script: The contents of an executable file to execute.
@@ -3382,18 +3383,34 @@ class Step(_messages.Message):
     workingDir: Container's working directory.
   """
 
+  class OnErrorValueValuesEnum(_messages.Enum):
+    r"""Optional. OnError defines the exiting behavior on error can be set to
+    [ continue | stopAndFail ]
+
+    Values:
+      ON_ERROR_TYPE_UNSPECIFIED: Default enum type; should not be used.
+      STOP_AND_FAIL: StopAndFail indicates exit if the step/task exits with
+        non-zero exit code
+      CONTINUE: Continue indicates continue executing the rest of the
+        steps/tasks irrespective of the exit code
+    """
+    ON_ERROR_TYPE_UNSPECIFIED = 0
+    STOP_AND_FAIL = 1
+    CONTINUE = 2
+
   args = _messages.StringField(1, repeated=True)
   command = _messages.StringField(2, repeated=True)
   env = _messages.MessageField('EnvVar', 3, repeated=True)
   image = _messages.StringField(4)
   name = _messages.StringField(5)
-  params = _messages.MessageField('Param', 6, repeated=True)
-  ref = _messages.MessageField('StepRef', 7)
-  script = _messages.StringField(8)
-  securityContext = _messages.MessageField('SecurityContext', 9)
-  timeout = _messages.StringField(10)
-  volumeMounts = _messages.MessageField('VolumeMount', 11, repeated=True)
-  workingDir = _messages.StringField(12)
+  onError = _messages.EnumField('OnErrorValueValuesEnum', 6)
+  params = _messages.MessageField('Param', 7, repeated=True)
+  ref = _messages.MessageField('StepRef', 8)
+  script = _messages.StringField(9)
+  securityContext = _messages.MessageField('SecurityContext', 10)
+  timeout = _messages.StringField(11)
+  volumeMounts = _messages.MessageField('VolumeMount', 12, repeated=True)
+  workingDir = _messages.StringField(13)
 
 
 class StepRef(_messages.Message):
@@ -3419,12 +3436,14 @@ class StepRef(_messages.Message):
       GIT: Simple Git resolver. https://tekton.dev/docs/pipelines/git-
         resolver/
       DEVELOPER_CONNECT: Developer Connect resolver.
+      DEFAULT: Default resolver.
     """
     RESOLVER_NAME_UNSPECIFIED = 0
     BUNDLES = 1
     GCB_REPO = 2
     GIT = 3
     DEVELOPER_CONNECT = 4
+    DEFAULT = 5
 
   name = _messages.StringField(1)
   params = _messages.MessageField('Param', 2, repeated=True)
@@ -3497,12 +3516,14 @@ class TaskRef(_messages.Message):
       GIT: Simple Git resolver. https://tekton.dev/docs/pipelines/git-
         resolver/
       DEVELOPER_CONNECT: Developer Connect resolver.
+      DEFAULT: Default resolver.
     """
     RESOLVER_NAME_UNSPECIFIED = 0
     BUNDLES = 1
     GCB_REPO = 2
     GIT = 3
     DEVELOPER_CONNECT = 4
+    DEFAULT = 5
 
   name = _messages.StringField(1)
   params = _messages.MessageField('Param', 2, repeated=True)
@@ -4103,8 +4124,7 @@ class Workflow(_messages.Message):
     ref: PipelineRef refer to a specific instance of a Pipeline. Deprecated;
       please use pipeline_ref instead.
     resources: Resources referenceable within a workflow.
-    secrets: Pairs a secret environment variable with a SecretVersion in
-      Secret Manager.
+    secrets: Optional. Secrets referenceable within a workflow.
     serviceAccount: If omitted, the default Cloud Build Service Account is
       used instead. Format:
       `projects/{project}/serviceAccounts/{serviceAccount}` Deprecated; please
@@ -4178,7 +4198,7 @@ class Workflow(_messages.Message):
   pipelineSpecYaml = _messages.StringField(10)
   ref = _messages.MessageField('PipelineRef', 11)
   resources = _messages.MessageField('ResourcesValue', 12)
-  secrets = _messages.MessageField('GoogleDevtoolsCloudbuildV2SecretManagerSecret', 13, repeated=True)
+  secrets = _messages.MessageField('WorkflowSecret', 13, repeated=True)
   serviceAccount = _messages.StringField(14)
   uid = _messages.StringField(15)
   updateTime = _messages.StringField(16)
@@ -4198,6 +4218,7 @@ class WorkflowOptions(_messages.Message):
       are accepted in the map pipeline, tasks and finally with
       Timeouts.pipeline >= Timeouts.tasks + Timeouts.finally
     worker: Optional. Worker config.
+    workerPool: Optional. The workerpool used to run the Workflow.
   """
 
   executionEnvironment = _messages.MessageField('ExecutionEnvironment', 1)
@@ -4206,34 +4227,48 @@ class WorkflowOptions(_messages.Message):
   statusUpdateOptions = _messages.MessageField('WorkflowStatusUpdateOptions', 4)
   timeouts = _messages.MessageField('TimeoutFields', 5)
   worker = _messages.MessageField('Worker', 6)
+  workerPool = _messages.StringField(7)
+
+
+class WorkflowSecret(_messages.Message):
+  r"""Secret referenceable within a workflow.
+
+  Fields:
+    name: Immutable. The name of the secret.
+    secretVersion: Required. The version of the secret.
+  """
+
+  name = _messages.StringField(1)
+  secretVersion = _messages.StringField(2)
 
 
 class WorkflowStatusUpdateOptions(_messages.Message):
   r"""Configure how/where status is posted.
 
   Enums:
-    RepositoryStatusValueValuesEnum: Options that specify additional
-      information related to a Repo that should be sent in Pub/Sub
-      Notifications
+    RepositoryStatusValueValuesEnum: Options that specify the level of details
+      related to the PipelineRun that was created by a triggered workflow sent
+      back to the GitHub CheckRun.
 
   Fields:
     pubsubTopic: Controls which Pub/Sub topic is used to send status updates
       as a build progresses and terminates. Default: projects//pub-
       sub/topics/cloud-build
-    repositoryStatus: Options that specify additional information related to a
-      Repo that should be sent in Pub/Sub Notifications
+    repositoryStatus: Options that specify the level of details related to the
+      PipelineRun that was created by a triggered workflow sent back to the
+      GitHub CheckRun.
   """
 
   class RepositoryStatusValueValuesEnum(_messages.Enum):
-    r"""Options that specify additional information related to a Repo that
-    should be sent in Pub/Sub Notifications
+    r"""Options that specify the level of details related to the PipelineRun
+    that was created by a triggered workflow sent back to the GitHub CheckRun.
 
     Values:
-      REPOSITORY_STATUS_UNSPECIFIED: Default value. This value is unused.
-      REPOSITORY_STATUS_NAME: Include the event_source of the WorkflowTrigger
-        that results in the PipelineRun/TaskRun
-      REPOSITORY_STATUS_NAME_LOG: Include the GCL log url of the
-        PipelineRun/TaskRun in addition to the event source
+      REPOSITORY_STATUS_UNSPECIFIED: This value is unused.
+      REPOSITORY_STATUS_NAME: Include the status of the PipelineRun. This is
+        the default value.
+      REPOSITORY_STATUS_NAME_LOG: Include the status of the PipelineRun and
+        the GCL log url of it.
     """
     REPOSITORY_STATUS_UNSPECIFIED = 0
     REPOSITORY_STATUS_NAME = 1
@@ -4266,6 +4301,8 @@ class WorkflowTrigger(_messages.Message):
     updateTime: Output only. Update time of the WorkflowTrigger.
     uuid: Output only. The internal id of the WorkflowTrigger.
     webhookSecret: The webhook secret resource.
+    webhookValidationSecret: Resource name of SecretManagerSecret version
+      validating webhook triggers.
   """
 
   class EventTypeValueValuesEnum(_messages.Enum):
@@ -4309,6 +4346,7 @@ class WorkflowTrigger(_messages.Message):
   updateTime = _messages.StringField(11)
   uuid = _messages.StringField(12)
   webhookSecret = _messages.MessageField('WebhookSecret', 13)
+  webhookValidationSecret = _messages.StringField(14)
 
 
 class WorkspaceBinding(_messages.Message):

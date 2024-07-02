@@ -1,4 +1,4 @@
-import { credential } from "firebase-admin"; // credential is usually used for authentication
+import {credential} from "firebase-admin"; // credential is usually used for authentication
 import {initializeApp} from "firebase-admin/app";
 import {Firestore} from "firebase-admin/firestore";
 
@@ -8,6 +8,7 @@ initializeApp({credential: credential.applicationDefault()});
 
 // creating an instance of firestore
 const firestore = new Firestore();
+// only one firestore per gcp project 
 
 // Note: This requires setting an env variable in Cloud Run
 /** if (process.env.NODE_ENV !== 'production') {
@@ -33,10 +34,10 @@ export interface Video {
 
 // retrives video 
 async function getVideo(videoId: string) {
-  const snapshot = await firestore.collection(videoCollectionId).doc(videoId).get();
-  return (snapshot.data() as Video) ?? {};
+  const snapshot = await firestore.collection(videoCollectionId).doc(videoId).get(); // returns the snapshot of the document
+  return (snapshot.data() as Video) ?? {}; // returns the actual document
 }
-// updates video
+// updates video and merges the data passed 
 export function setVideo(videoId: string, video: Video) {
   return firestore
     .collection(videoCollectionId)

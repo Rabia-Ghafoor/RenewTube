@@ -77,6 +77,7 @@ apis:
     v1beta1:
       default: true
       discovery_doc: aiplatform_v1beta1.json
+      gcloud_gapic_library: google/cloud/aiplatform/v1beta1:aiplatform_v1beta1_py
       resources:
         projects.locations.models.operations:
           path: projects/{projectsId}/locations/{locationsId}/models/{modelsId}/operations/{operationsId}
@@ -88,6 +89,7 @@ apis:
           path: projects/{projectsId}/locations/{locationsId}/indexEndpoints/{indexEndpointsId}/operations/{operationsId}
     v1:
       discovery_doc: aiplatform_v1.json
+      gcloud_gapic_library: google/cloud/aiplatform/v1:aiplatform_v1_py
       resources:
         projects.locations.models.operations:
           path: projects/{projectsId}/locations/{locationsId}/models/{modelsId}/operations/{operationsId}
@@ -137,9 +139,9 @@ apis:
       default: true
     v2alpha:
       discovery_doc: apigee_v2alpha.json
-  apigeeregistry:
+  apihub:
     v1:
-      discovery_doc: apigeeregistry_v1.json
+      discovery_doc: apihub_v1.json
       default: true
   appconfigmanager:
     v1alpha:
@@ -271,10 +273,6 @@ apis:
     v1:
       discovery_doc: certificatemanager_v1.json
       default: true
-    v1alpha1:
-      discovery_doc: certificatemanager_v1alpha1.json
-    v1alpha2:
-      discovery_doc: certificatemanager_v1alpha2.json
   cloudasset:
     v1:
       default: true
@@ -391,8 +389,6 @@ apis:
     v1:
       discovery_doc: cloudkms_v1.json
       default: true
-    v1alpha1:
-      discovery_doc: cloudkms_v1alpha1.json
   cloudnumberregistry:
     v1alpha:
       discovery_doc: cloudnumberregistry_v1alpha.json
@@ -506,6 +502,10 @@ apis:
   connectgateway:
     v1alpha1:
       discovery_doc: connectgateway_v1alpha1.json
+    v1beta1:
+      discovery_doc: connectgateway_v1beta1.json
+    v1:
+      discovery_doc: connectgateway_v1.json
       default: true
   container:
     v1:
@@ -1731,9 +1731,9 @@ canonical_surfaces:
   apigee:
     name: apigee
     command: apigee
-  apigeeregistry:
-    name: apigeeregistry
-    command: apigee-registry
+  apihub:
+    name: apihub
+    command: apigeeregistry
     hidden: true
   appengine:
     name: appengine
@@ -1848,6 +1848,7 @@ canonical_surfaces:
     command: container fleet packages
   connectgateway:
     name: connectgateway
+    # This API endpoint is automatically overridden based on the 'gkehub' override.
     hidden: true
   container:
     name: container

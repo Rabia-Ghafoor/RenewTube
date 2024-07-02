@@ -60,7 +60,7 @@ def AddFleetPackageFlag(parser):
 def AddSourceFlag(parser):
   parser.add_argument(
       '--source',
-      required=False,
+      required=True,
       help='Source file containing Fleet Package configuration.',
   )
 
@@ -128,14 +128,6 @@ def FleetPackageAttributeConfig():
 def RolloutAttributeConfig():
   return concepts.ResourceParameterAttributeConfig(
       name='rollout', help_text='Rollout name.'
-  )
-
-
-def GetLocationResourceSpec():
-  return concepts.ResourceSpec(
-      'configdelivery.projects.locations',
-      resource_name='location',
-      projectsId=ProjectAttributeConfig(),
   )
 
 

@@ -17,6 +17,7 @@
 from googlecloudsdk.api_lib.container.fleet.packages import fleet_packages as apis
 from googlecloudsdk.calliope import base
 from googlecloudsdk.command_lib.container.fleet.packages import flags
+from googlecloudsdk.command_lib.container.fleet.packages import utils
 from googlecloudsdk.command_lib.export import util as export_util
 from googlecloudsdk.core.console import console_io
 
@@ -31,7 +32,6 @@ _DETAILED_HELP = {
 }
 
 
-@base.Hidden
 @base.DefaultUniverseOnly
 @base.ReleaseTracks(base.ReleaseTrack.ALPHA)
 class Create(base.CreateCommand):
@@ -48,7 +48,9 @@ class Create(base.CreateCommand):
   def Run(self, args):
     """Run the create command."""
     client = apis.FleetPackagesClient()
-    data = console_io.ReadFromFileOrStdin(args.source, binary=False)
+    data = console_io.ReadFromFileOrStdin(
+        utils.ExpandPathForUser(args.source), binary=False
+    )
     fleet_package = export_util.Import(
         message_type=client.messages.FleetPackage,
         stream=data,
@@ -62,8 +64,9 @@ class Create(base.CreateCommand):
         f'projects/{flags.GetProject(args)}/locations/{flags.GetLocation(args)}'
     )
     fully_qualified_name = f'{parent}/fleetPackages/{args.name}'
-    if not fleet_package.name:
-      fleet_package.name = fully_qualified_name
+    fleet_package = utils.UpsertFleetPackageName(
+        fleet_package, fully_qualified_name
+    )
 
     return client.Create(
         fleet_package=fleet_package, fleet_package_id=args.name, parent=parent

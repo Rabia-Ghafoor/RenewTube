@@ -17,7 +17,6 @@
 import glob
 import os
 
-from googlecloudsdk.api_lib.util import apis
 from googlecloudsdk.core import yaml
 
 _DEFAULT_API_VERSION = 'v1alpha'
@@ -28,36 +27,36 @@ ROLLOUTS_DESCRIBE_ROLLING_TRUNCATED_MESSAGES_FORMAT = """table(info.rolloutStrat
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.current.version:label=CURRENT_VERSION,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.current.syncState:label=CURRENT_STATE,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.desired.version:label=DESIRED_VERSION,
-                    info.rolloutStrategyInfo.rollingStrategyInfo.clusters.desired.syncState:label=DESIRED_STATE,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.startTime:label=START_TIME,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.endTime:label=END_TIME,
+                    info.rolloutStrategyInfo.rollingStrategyInfo.clusters.state:label=STATE,
                     trim_message():label=MESSAGE)"""
 
 ROLLOUTS_DESCRIBE_ALLATONCE_TRUNCATED_MESSAGES_FORMAT = """table(info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.membership.basename():label=CLUSTER,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.current.version:label=CURRENT_VERSION,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.current.syncState:label=CURRENT_STATE,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.desired.version:label=DESIRED_VERSION,
-                    info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.desired.syncState:label=DESIRED_STATE,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.startTime:label=START_TIME,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.endTime:label=END_TIME,
+                    info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.state:label=STATE,
                     trim_message():label=MESSAGE)"""
 
 ROLLOUTS_DESCRIBE_ROLLING_FULL_MESSAGES_FORMAT = """table(info.rolloutStrategyInfo.rollingStrategyInfo.clusters.membership.basename():label=CLUSTER,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.current.version:label=CURRENT_VERSION,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.current.syncState:label=CURRENT_STATE,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.desired.version:label=DESIRED_VERSION,
-                    info.rolloutStrategyInfo.rollingStrategyInfo.clusters.desired.syncState:label=DESIRED_STATE,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.startTime:label=START_TIME,
                     info.rolloutStrategyInfo.rollingStrategyInfo.clusters.endTime:label=END_TIME,
+                    info.rolloutStrategyInfo.rollingStrategyInfo.clusters.state:label=STATE,
                     all_messages():label=MESSAGES)"""
 
 ROLLOUTS_DESCRIBE_ALLATONCE_FULL_MESSAGES_FORMAT = """table(info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.membership.basename():label=CLUSTER,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.current.version:label=CURRENT_VERSION,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.current.syncState:label=CURRENT_STATE,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.desired.version:label=DESIRED_VERSION,
-                    info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.desired.syncState:label=DESIRED_STATE,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.startTime:label=START_TIME,
                     info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.endTime:label=END_TIME,
+                    info.rolloutStrategyInfo.allAtOnceStrategyInfo.clusters.state:label=STATE,
                     all_messages():label=MESSAGES)"""
 
 
@@ -65,7 +64,7 @@ def ApiVersion():
   return _DEFAULT_API_VERSION
 
 
-def FormatForRolloutsDescribe(rollout, args, less=True):
+def FormatForRolloutsDescribe(rollout, args, less=False):
   """Sets format for `rollouts describe` depending on rollout strategy.
 
   Args:
@@ -131,25 +130,14 @@ def _VariantNameFromDir(path):
   return variant_name
 
 
-def _SplitResourceBundleNameFromFleetPackage(fleet_package):
-  resource_bundle_name = (
-      fleet_package.resourceBundleSelector.resourceBundle.name
-  )
-  return resource_bundle_name.split('/')
+def ExpandPathForUser(path):
+  return os.path.expanduser(path)
 
 
 def _ExpandPathForUserAndVars(path):
   user_expanded_path = os.path.expanduser(path)
   vars_expanded_path = os.path.expandvars(user_expanded_path)
   return vars_expanded_path
-
-
-def _GetClientInstance(no_http=False):
-  return apis.GetClientInstance('configdelivery', ApiVersion(), no_http=no_http)
-
-
-def _GetMessagesModule():
-  return _GetClientInstance().MESSAGES_MODULE
 
 
 def GlobPatternFromSourceAndVariantsPattern(source, variants_pattern=None):
@@ -185,18 +173,6 @@ def ValidateSource(source):
     )
 
 
-def ProjectFromFleetPackage(fleet_package):
-  """Project segment parsed from Fleet Package file input."""
-  split_bundle = _SplitResourceBundleNameFromFleetPackage(fleet_package)
-  return split_bundle[_RESOURCE_BUNDLE_PROJECT_SEGMENT]
-
-
-def LocationFromFleetPackage(fleet_package):
-  """Location segment parsed from Fleet Package file input."""
-  split_bundle = _SplitResourceBundleNameFromFleetPackage(fleet_package)
-  return split_bundle[_RESOURCE_BUNDLE_LOCATION_SEGMENT]
-
-
 def VariantsFromGlobPattern(glob_pattern):
   """Returns a dictionary of input-format variants discovered from a glob.
 
@@ -225,7 +201,7 @@ def VariantsFromGlobPattern(glob_pattern):
       files_list = _AllFilesUnderDir(paths[0])
       all_resources = []
       for file in files_list:
-        full_file_path = os.path.join(paths[0], file)
+        full_file_path = os.path.abspath(file)
         resources = _LoadResourcesFromFile(full_file_path)
         if resources:
           all_resources.extend(resources)
@@ -242,7 +218,7 @@ def VariantsFromGlobPattern(glob_pattern):
         files_list = _AllFilesUnderDir(path)
         all_resources = []
         for file in files_list:
-          full_file_path = os.path.join(path, file)
+          full_file_path = os.path.abspath(file)
           resources = _LoadResourcesFromFile(full_file_path)
           if resources:
             all_resources.extend(resources)
@@ -252,8 +228,8 @@ def VariantsFromGlobPattern(glob_pattern):
   return variants
 
 
-def TransformTrimMessage(resource):
-  """Trims rollout-level message if it's too long.
+def TransformTrimClusterLevelMessages(resource):
+  """Shows the first cluster-level message and truncates it if it's too long.
 
   Args:
     resource: A RolloutInfo resource
@@ -262,7 +238,7 @@ def TransformTrimMessage(resource):
     Message limited to 40 characters
   """
   truncated_message_length = 40
-  messages = _GetMessagesFromResource(resource)
+  messages = _GetClusterLevelMessagesFromResource(resource)
   if not messages:
     return ''
   if len(messages) >= 1 and len(messages[0]) > truncated_message_length:
@@ -270,59 +246,48 @@ def TransformTrimMessage(resource):
   return messages[0]
 
 
-def _GetMessagesFromResource(resource):
-  """Gathers messages from different levels of a Rollout resource.
+def TransformTrimRolloutLevelMessage(resource):
+  """Trims rollout-level message if it's too long.
 
   Args:
-    resource: A RolloutInfo resource, from `... rollouts describe ...`
+    resource: A Rollout resource
+
+  Returns:
+    String message limited to 40 characters
+  """
+  rollout_info = resource.get('info', {})
+  if rollout_info:
+    rollout_message = rollout_info.get('message', '')
+    if rollout_message:
+      if len(rollout_message) > 40:
+        return rollout_message[:40] + '...'
+      return rollout_message
+  return ''
+
+
+def _GetClusterLevelMessagesFromResource(resource):
+  """Gathers cluster-level messages from a Rollout resource.
+
+  Args:
+    resource: A Rollout resource, from `... rollouts describe ...`
 
   Returns:
     A list of messages from the Rollout resource.
   """
   messages = []
-  if resource is None:
-    return messages
-  info_message = resource.get('info', {}).get('message', '')
-  if info_message:
-    messages.append(info_message)
-  cluster_messages = (
-      resource.get('info', {})
-      .get('rolloutStrategyInfo', {})
-      .get('rollingStrategyInfo', {})
-      .get('clusters', {})
-      .get('messages', [])
+  if not resource:
+    return []
+  rollout_strategy_info = resource.get('info', {}).get(
+      'rolloutStrategyInfo', {}
   )
-  if cluster_messages:
-    messages.extend(cluster_messages)
-  current_messages = (
-      resource.get('info', {})
-      .get('rolloutStrategyInfo', {})
-      .get('rollingStrategyInfo', {})
-      .get('clusters', {})
-      .get('current', {})
-      .get('messages', [])
-  )
-  if current_messages:
-    messages.extend(current_messages)
-  cluster_messages = (
-      resource.get('info', {})
-      .get('rolloutStrategyInfo', {})
-      .get('allAtOnceStrategyInfo', {})
-      .get('clusters', {})
-      .get('messages', [])
-  )
-  if cluster_messages:
-    messages.extend(cluster_messages)
-  current_messages = (
-      resource.get('info', {})
-      .get('rolloutStrategyInfo', {})
-      .get('allAtOnceStrategyInfo', {})
-      .get('clusters', {})
-      .get('current', {})
-      .get('messages', [])
-  )
-  if current_messages:
-    messages.extend(current_messages)
+  for rollout_info in rollout_strategy_info.values():
+    clusters = rollout_info.get('clusters', [])
+    if 'messages' in clusters:
+      messages.extend(clusters.get('messages', []))
+    for cluster in clusters.values():
+      if 'messages' in cluster:
+        messages.extend(cluster.get('messages', []))
+
   info_errors = resource.get('info', {}).get('errors', [])
   if info_errors:
     for error in info_errors:
@@ -333,17 +298,16 @@ def _GetMessagesFromResource(resource):
   return messages
 
 
-def TransformAllMessages(resource):
-  """Gathers messages from all levels from a Rollout resource.
+def TransformAllClusterLevelMessages(resource):
+  """Returns all cluster-level messages from a Rollout resource.
 
   Args:
-    resource: A RolloutInfo resource, from `... rollouts describe ...`
+    resource: A Rollout resource, from `... rollouts describe ...`
 
   Returns:
-    All messages on a Rollout, including sync-level, cluster-level, and
-    rollout-level messages.
+    A single string or string array of cluster-level messages.
   """
-  messages = _GetMessagesFromResource(resource)
+  messages = _GetClusterLevelMessagesFromResource(resource)
   if not messages:
     return ''
   elif len(messages) == 1:
@@ -368,3 +332,18 @@ def TransformListFleetPackageErrors(resource):
   elif len(messages) == 1:
     return messages[0]
   return messages
+
+
+def UpsertFleetPackageName(fleet_package, fully_qualified_name):
+  """Upserts the correct fleet package name into fleet package resource.
+
+  Args:
+    fleet_package: A user-inputted FleetPackage which may or may not have a name
+    fully_qualified_name: The fully qualified name of the FleetPackage resource.
+
+  Returns:
+    A FleetPackage that definitely has the correct fully qualified name.
+  """
+  if not fleet_package.name:
+    fleet_package.name = fully_qualified_name
+  return fleet_package

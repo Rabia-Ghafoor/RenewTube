@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
+import re
 import time
 
 from apitools.base.py import exceptions as apitools_exceptions
@@ -266,6 +267,14 @@ COMPLIANCE_MODE_NOT_SUPPORTED = """\
 Invalid mode '{mode}' for '--compliance' (must be one of 'enabled', 'disabled').
 """
 
+COMPLIANCE_DISABLED_CONFIGURATION = """\
+Cannot specify --compliance-standards with --compliance=disabled
+"""
+
+COMPLIANCE_INVALID_STANDARDS_CONFIGURATION = """\
+Invalid value '{standards}' for --compliance-standards: must provide a list of standards separated by commas.
+"""
+
 SECURITY_POSTURE_MODE_NOT_SUPPORTED = """\
 Invalid mode '{mode}' for '--security-posture' (must be one of 'disabled', 'standard', 'enterprise').
 """
@@ -280,6 +289,14 @@ Provided host maintenance interval type '{type}' is not supported.
 
 NODECONFIGDEFAULTS_READONLY_PORT_NOT_SUPPORTED = """\
 nodePoolDefaults.nodeKubeletConfig is not supported on GKE Autopilot clusters.
+"""
+
+ADDITIONAL_SUBNETWORKS_NOT_FOUND = """\
+Can not remove subnetwork {subnetwork}: not found in additional subnetworks
+"""
+
+ADDITIONAL_SUBNETWORKS_POD_RANG_ENOT_FOUND = """\
+Can not remove pod ipv4 range {range}: not found in additional subnetworks
 """
 
 MAX_NODES_PER_POOL = 2000
@@ -395,6 +412,10 @@ PRIMARY_LOGS_OPTIONS = [
 ]
 PLACEMENT_OPTIONS = ['UNSPECIFIED', 'COMPACT']
 LOCATION_POLICY_OPTIONS = ['BALANCED', 'ANY']
+
+# gcloud-disable-gdu-domain
+SUBNETWORK_URL_PATTERN = (
+    r'^https://www.googleapis.com/compute/[a-z1-9_]+/(?P<resource>.*)$')
 
 
 def CheckResponse(response):
@@ -736,6 +757,8 @@ class CreateClusterOptions(object):
       storage_pools=None,
       enable_ray_cluster_logging=None,
       enable_ray_cluster_monitoring=None,
+      enable_insecure_binding_system_authenticated=None,
+      enable_insecure_binding_system_unauthenticated=None,
   ):
     self.node_machine_type = node_machine_type
     self.node_source_image = node_source_image
@@ -969,6 +992,12 @@ class CreateClusterOptions(object):
     self.enable_ray_cluster_monitoring = (
         enable_ray_cluster_monitoring
     )
+    self.enable_insecure_binding_system_authenticated = (
+        enable_insecure_binding_system_authenticated
+    )
+    self.enable_insecure_binding_system_unauthenticated = (
+        enable_insecure_binding_system_unauthenticated
+    )
 
 
 class UpdateClusterOptions(object):
@@ -1120,6 +1149,10 @@ class UpdateClusterOptions(object):
       autoprovisioning_enable_insecure_kubelet_readonly_port=None,
       enable_ray_cluster_logging=None,
       enable_ray_cluster_monitoring=None,
+      enable_insecure_binding_system_authenticated=None,
+      enable_insecure_binding_system_unauthenticated=None,
+      additional_ip_ranges=None,
+      remove_additional_ip_ranges=None,
   ):
     self.version = version
     self.update_master = bool(update_master)
@@ -1284,6 +1317,14 @@ class UpdateClusterOptions(object):
     self.enable_ray_cluster_monitoring = (
         enable_ray_cluster_monitoring
     )
+    self.enable_insecure_binding_system_authenticated = (
+        enable_insecure_binding_system_authenticated
+    )
+    self.enable_insecure_binding_system_unauthenticated = (
+        enable_insecure_binding_system_unauthenticated
+    )
+    self.additional_ip_ranges = additional_ip_ranges
+    self.remove_additional_ip_ranges = remove_additional_ip_ranges
 
 
 class SetMasterAuthOptions(object):
@@ -1732,7 +1773,7 @@ class APIAdapter(object):
             project=cluster_ref.projectId))
     try:
       clusters = self.ListClusters(cluster_ref.projectId).clusters
-    except apitools_exceptions.HttpForbiddenError as error:
+    except apitools_exceptions.HttpForbiddenError:
       # Raise the default 404 Not Found error.
       # 403 Forbidden error shouldn't be raised for this unrequested list.
       raise not_found_error
@@ -1798,33 +1839,47 @@ class APIAdapter(object):
     Raises:
       Error: if the operation times out or finishes with an error.
     """
-    detail_message = None
-    with progress_tracker.ProgressTracker(
-        message, autotick=True, detail_message_callback=lambda: detail_message):
-      start_time = time.time()
-      while timeout_s > (time.time() - start_time):
-        try:
-          operation = self.GetOperation(operation_ref)
-          if self.IsOperationFinished(operation):
-            # Success!
-            log.info('Operation %s succeeded after %.3f seconds', operation,
-                     (time.time() - start_time))
-            break
-          detail_message = operation.detail
-        except apitools_exceptions.HttpError as error:
-          log.debug('GetOperation failed: %s', error)
-          if error.status_code == six.moves.http_client.FORBIDDEN:
-            raise exceptions.HttpException(error, util.HTTP_ERROR_FORMAT)
+
+    def _MustGetOperation():
+      """Gets the operation or throws an exception."""
+      try:
+        return self.GetOperation(operation_ref)
+      except apitools_exceptions.HttpError as error:
+        log.debug('GetOperation failed: %s', error)
+        if error.status_code == six.moves.http_client.FORBIDDEN:
+          raise exceptions.HttpException(error, util.HTTP_ERROR_FORMAT)
+
+    def _WaitForOperation():
+      """Retries getting the operation until it finishes, times out or fails."""
+      detail_message = None
+      with progress_tracker.ProgressTracker(
+          message, autotick=True, detail_message_callback=lambda: detail_message
+      ):
+        start_time = time.time()
+        op = _MustGetOperation()  # Try and get the operation.
+        while timeout_s > (time.time() - start_time):
+          if self.IsOperationFinished(op):
+            # Report completion time and return
+            duration = time.time() - start_time
+            log.info(f'Operation {op} finished after {duration:.3} seconds')
+            return op
+          detail_message = op.detail
           # Keep trying until we timeout in case error is transient.
-        time.sleep(poll_period_s)
-    if not self.IsOperationFinished(operation):
-      log.err.Print('Timed out waiting for operation {0}'.format(operation))
+          time.sleep(poll_period_s)
+          op = _MustGetOperation()  # Re-try getting the operation
+
+        log.err.Print(f'Timed out waiting for operation {op}')
+        raise util.Error(
+            f'Operation [{op}] is still running, check its status via '
+            + f"'gcloud container operations describe {op.name}'"
+        )
+
+    operation = _WaitForOperation()
+    if operation.statusMessage:
       raise util.Error(
-          'Operation [{0}] is still running, check its status via \'gcloud container operations describe {1}\''
-          .format(operation, operation.name))
-    if self.GetOperationError(operation):
-      raise util.Error('Operation [{0}] finished with error: {1}'.format(
-          operation, self.GetOperationError(operation)))
+          f'Operation [{operation}] finished with error: '
+          + f'{operation.statusMessage}'
+      )
 
     return operation
 
@@ -2391,6 +2446,12 @@ class APIAdapter(object):
         )
 
     if options.compliance_standards is not None:
+      # --compliance=disabled and --compliance-standards=a,b,c are mutually
+      # exclusive.
+      if options.compliance is not None and options.compliance.lower() == 'disabled':
+        raise util.Error(
+            COMPLIANCE_DISABLED_CONFIGURATION)
+
       if options.compliance is None:
         cluster.compliancePostureConfig = (
             self.messages.CompliancePostureConfig()
@@ -2517,6 +2578,20 @@ class APIAdapter(object):
         cluster.networkConfig = self.messages.NetworkConfig()
       cluster.networkConfig.enableFqdnNetworkPolicy = (
           options.enable_fqdn_network_policy)
+
+    if options.enable_insecure_binding_system_authenticated is not None:
+      if cluster.rbacBindingConfig is None:
+        cluster.rbacBindingConfig = self.messages.RBACBindingConfig()
+      cluster.rbacBindingConfig.enableInsecureBindingSystemAuthenticated = (
+          options.enable_insecure_binding_system_authenticated
+      )
+
+    if options.enable_insecure_binding_system_unauthenticated is not None:
+      if cluster.rbacBindingConfig is None:
+        cluster.rbacBindingConfig = self.messages.RBACBindingConfig()
+      cluster.rbacBindingConfig.enableInsecureBindingSystemUnauthenticated = (
+          options.enable_insecure_binding_system_unauthenticated
+      )
 
     return cluster
 
@@ -3240,9 +3315,14 @@ class APIAdapter(object):
   def UpdateUpgradeSettingsForNAP(self, options, max_surge, max_unavailable):
     """Updates upgrade setting for autoprovisioned node pool."""
 
-    if options.enable_autoprovisioning_surge_upgrade and options.enable_autoprovisioning_blue_green_upgrade:
+    if (
+        options.enable_autoprovisioning_surge_upgrade
+        and options.enable_autoprovisioning_blue_green_upgrade
+    ):
       raise util.Error(
-          'UpgradeSettings must contain only one of: --enable-autoprovisioning-surge-upgrade, --enable-autoprovisioning-blue-green-upgrade'
+          'UpgradeSettings must contain only one of:'
+          ' --enable-autoprovisioning-surge-upgrade,'
+          ' --enable-autoprovisioning-blue-green-upgrade'
       )
 
     upgrade_settings = self.messages.UpgradeSettings()
@@ -3836,23 +3916,58 @@ class APIAdapter(object):
         options.compliance is not None
         or options.compliance_standards is not None
     ):
-      compliance_config = self.messages.CompliancePostureConfig()
-      if options.compliance is not None:
-        if options.compliance.lower() == 'enabled':
-          compliance_config.mode = (
-              self.messages.CompliancePostureConfig.ModeValueValuesEnum.ENABLED
+      # --compliance=disabled and --compliance-standards=a,b,c are mutually
+      # exclusive.
+      if options.compliance == 'disabled' and options.compliance_standards:
+        raise util.Error(COMPLIANCE_DISABLED_CONFIGURATION)
+
+      # Desired configuration to set.
+      compliance_update = self.messages.CompliancePostureConfig()
+      # Current configuration, if any.
+      cluster = self.GetCluster(cluster_ref)
+
+      compliance_mode = (
+          options.compliance.lower() if options.compliance else None
+      )
+      if (
+          compliance_mode is None
+      ):  # If not provided, look for current configuration.
+        if cluster.compliancePostureConfig is not None:
+          compliance_update.mode = cluster.compliancePostureConfig.mode
+      elif compliance_mode == 'disabled':
+        compliance_update.mode = (
+            self.messages.CompliancePostureConfig.ModeValueValuesEnum.DISABLED
+        )
+      elif compliance_mode == 'enabled':
+        compliance_update.mode = (
+            self.messages.CompliancePostureConfig.ModeValueValuesEnum.ENABLED
+        )
+      else:  # Invalid input.
+        raise util.Error(
+            COMPLIANCE_MODE_NOT_SUPPORTED.format(mode=options.compliance)
+        )
+
+      if options.compliance_standards is None:
+        # If not provided, look for current configuration.
+        if cluster.compliancePostureConfig is not None:
+          compliance_update.complianceStandards = (
+              cluster.compliancePostureConfig.complianceStandards
           )
-        elif options.compliance.lower() == 'disabled':
-          compliance_config.mode = (
-              self.messages.CompliancePostureConfig.ModeValueValuesEnum.DISABLED
-          )
-      if options.compliance_standards is not None:
-        compliance_config.complianceStandards = [
+        # Otherwise do nothing.
+      elif not options.compliance_standards:  # Empty input is invalid.
+        raise util.Error(
+            COMPLIANCE_INVALID_STANDARDS_CONFIGURATION.format(
+                standards=options.compliance_standards
+            )
+        )
+      else:  # If a list, build new standards configuration.
+        compliance_update.complianceStandards = [
             self.messages.ComplianceStandard(standard=standard)
             for standard in options.compliance_standards.split(',')
         ]
+
       update = self.messages.ClusterUpdate(
-          desiredCompliancePostureConfig=compliance_config
+          desiredCompliancePostureConfig=compliance_update
       )
 
     if options.enable_security_posture is not None:
@@ -3997,6 +4112,74 @@ class APIAdapter(object):
     if options.enable_fqdn_network_policy is not None:
       update = self.messages.ClusterUpdate(
           desiredEnableFqdnNetworkPolicy=options.enable_fqdn_network_policy)
+
+    if (options.enable_insecure_binding_system_authenticated is not None or
+        options.enable_insecure_binding_system_unauthenticated is not None):
+      confg = self.messages.RBACBindingConfig()
+      if options.enable_insecure_binding_system_authenticated is not None:
+        confg.enableInsecureBindingSystemAuthenticated = (
+            options.enable_insecure_binding_system_authenticated
+        )
+      if options.enable_insecure_binding_system_unauthenticated is not None:
+        confg.enableInsecureBindingSystemUnauthenticated = (
+            options.enable_insecure_binding_system_unauthenticated
+        )
+      update = self.messages.ClusterUpdate(desiredRBACBindingConfig=confg)
+
+    if (
+        options.additional_ip_ranges is not None or
+        options.remove_additional_ip_ranges is not None
+    ):
+      cluster = self.GetCluster(cluster_ref)
+      desired_ip_ranges = {}
+      if cluster.ipAllocationPolicy:
+        config = cluster.ipAllocationPolicy.additionalIpRangesConfigs
+        if config:
+          for ip_range in config:
+            secondary_ranges = set(ip_range.podIpv4RangeNames)
+            desired_ip_ranges[ip_range.subnetwork] = secondary_ranges
+
+      if options.additional_ip_ranges is not None:
+        for ip_range in options.additional_ip_ranges:
+          subnetwork = SubnetworkNameToPath(
+              ip_range['subnetwork'], cluster_ref.projectId, cluster_ref.zone)
+          secondary_ranges = (desired_ip_ranges[subnetwork]
+                              if subnetwork in desired_ip_ranges else set())
+          secondary_ranges.add(ip_range['pod-ipv4-range'])
+          desired_ip_ranges[subnetwork] = secondary_ranges
+
+      if options.remove_additional_ip_ranges is not None:
+        for ip_remove in options.remove_additional_ip_ranges:
+          subnetwork = SubnetworkNameToPath(
+              ip_remove['subnetwork'], cluster_ref.projectId, cluster_ref.zone)
+          if subnetwork not in desired_ip_ranges:
+            raise util.Error(ADDITIONAL_SUBNETWORKS_NOT_FOUND.format(
+                subnetwork=subnetwork))
+          if 'pod-ipv4-range' in ip_remove:
+            removed_range = ip_remove['pod-ipv4-range']
+            try:
+              desired_ip_ranges[subnetwork].remove(removed_range)
+              if not desired_ip_ranges[subnetwork]:
+                desired_ip_ranges.pop(subnetwork)
+            except KeyError:
+              raise util.Error(
+                  ADDITIONAL_SUBNETWORKS_POD_RANG_ENOT_FOUND.format(
+                      range=removed_range
+                  ))
+          else:
+            desired_ip_ranges.pop(subnetwork)
+
+      update = self.messages.ClusterUpdate(
+          desiredAdditionalIpRangesConfig=self.messages.DesiredAdditionalIPRangesConfig(
+              additionalIpRangesConfigs=[
+                  self.messages.AdditionalIPRangesConfig(
+                      subnetwork=subnetwork,
+                      podIpv4RangeNames=list(secondary_ranges),
+                  )
+                  for subnetwork, secondary_ranges in desired_ip_ranges.items()
+              ]
+          )
+      )
 
     return update
 
@@ -5060,9 +5243,6 @@ class APIAdapter(object):
     else:
       return gke_constants.DEFAULT_DEGRADED_WARNING
 
-  def GetOperationError(self, operation):
-    return operation.statusMessage
-
   def ListOperations(self, project, location=None):
     if not location:
       location = '-'
@@ -5248,7 +5428,7 @@ class APIAdapter(object):
     for k in remove_labels:
       try:
         clus_labels.pop(k)
-      except KeyError as error:
+      except KeyError:
         # if at least one label not found on cluster, raise error
         raise util.Error(
             NO_SUCH_LABEL_ERROR_MSG.format(cluster=clus.name, name=k))
@@ -5655,6 +5835,34 @@ class APIAdapter(object):
         rayOperatorConfig=ray_operator_config
     )
     update = self.messages.ClusterUpdate(desiredAddonsConfig=addons_config)
+    op = self.client.projects_locations_clusters.Update(
+        self.messages.UpdateClusterRequest(
+            name=ProjectLocationCluster(
+                cluster_ref.projectId, cluster_ref.zone, cluster_ref.clusterId
+            ),
+            update=update,
+        )
+    )
+    return self.ParseOperation(op.name, cluster_ref.zone)
+
+  def ModifyRBACBindingConfig(
+      self, cluster_ref,
+      enable_insecure_binding_system_authenticated,
+      enable_insecure_binding_system_unauthenticated
+      ):
+    """Modify the RBACBindingConfig message."""
+    rbac_binding_config = self.messages.RBACBindingConfig()
+    if enable_insecure_binding_system_authenticated is not None:
+      rbac_binding_config.enableInsecureBindingSystemAuthenticated = (
+          enable_insecure_binding_system_authenticated
+      )
+    if enable_insecure_binding_system_unauthenticated is not None:
+      rbac_binding_config.enableInsecureBindingSystemUnauthenticated = (
+          enable_insecure_binding_system_unauthenticated
+      )
+    update = self.messages.ClusterUpdate(
+        desiredRbacBindingConfig=rbac_binding_config
+        )
     op = self.client.projects_locations_clusters.Update(
         self.messages.UpdateClusterRequest(
             name=ProjectLocationCluster(
@@ -6870,7 +7078,7 @@ def _AddLinuxNodeConfigToNodeConfig(node_config, options, messages):
 
 
 def _AddWindowsNodeConfigToNodeConfig(node_config, options, messages):
-  """ "Adds WindowsNodeConfig to NodeConfig."""
+  """Adds WindowsNodeConfig to NodeConfig."""
 
   if options.windows_os_version is not None:
     if node_config.windowsNodeConfig is None:
@@ -6965,7 +7173,7 @@ def _GetStableFleetConfig(options, messages):
     }
     if options.maintenance_interval not in maintenance_interval_types:
       raise util.Error(
-          MAINTENANCE_INTERVAL_TYPE_NOT_SUPPORTED.FORMAT(
+          MAINTENANCE_INTERVAL_TYPE_NOT_SUPPORTED.format(
               type=options.maintenance_interval))
     return messages.StableFleetConfig(
         maintenanceInterval=maintenance_interval_types[
@@ -7016,9 +7224,10 @@ def _GetReleaseChannel(options, messages):
         'rapid': messages.ReleaseChannel.ChannelValueValuesEnum.RAPID,
         'regular': messages.ReleaseChannel.ChannelValueValuesEnum.REGULAR,
         'stable': messages.ReleaseChannel.ChannelValueValuesEnum.STABLE,
+        'extended': messages.ReleaseChannel.ChannelValueValuesEnum.EXTENDED,
         'None': messages.ReleaseChannel.ChannelValueValuesEnum.UNSPECIFIED,
     }
-    return messages.ReleaseChannel(channel=channels[options.release_channel])
+    return messages.ReleaseChannel(channel=channels[options.release_channel[0]])
 
 
 def _GetNotificationConfigForClusterUpdate(options, messages):
@@ -7049,7 +7258,10 @@ def _GetTpuConfigForClusterUpdate(options, messages):
 
 def _GetMasterForClusterCreate(options, messages):
   """Gets the Master from create options."""
-  if options.master_logs is not None or options.enable_master_metrics is not None:
+  if (
+      options.master_logs is not None
+      or options.enable_master_metrics is not None
+  ):
     config = messages.MasterSignalsConfig()
 
     if options.master_logs is not None:
@@ -7169,7 +7381,7 @@ def _GetHostMaintenancePolicy(options, messages):
     }
     if options.host_maintenance_interval not in maintenance_interval_types:
       raise util.Error(
-          HOST_MAINTENANCE_INTERVAL_TYPE_NOT_SUPPORTED.FORMAT(
+          HOST_MAINTENANCE_INTERVAL_TYPE_NOT_SUPPORTED.format(
               type=options.host_maintenance_interval
           )
       )
@@ -7397,6 +7609,23 @@ def ProjectLocationClusterNodePool(project, location, cluster, nodepool):
 
 def ProjectLocationOperation(project, location, operation):
   return ProjectLocation(project, location) + '/operations/' + operation
+
+
+def ProjectLocationSubnetwork(project, region, subnetwork):
+  return ('projects/' + project + '/regions/' + region  + '/subnetworks/' +
+          subnetwork)
+
+
+def SubnetworkNameToPath(subnetwork, project, zone):
+  match = re.match(SUBNETWORK_URL_PATTERN + '$', subnetwork)
+  if match:
+    subnetwork = match[1]
+  parts = subnetwork.split('/')
+  if (len(parts) == 6 and parts[0] == 'projects' and parts[2] == 'regions' and
+      parts[4] == 'subnetworks'):
+    return subnetwork
+  region = zone[:zone.rfind('-')]
+  return ProjectLocationSubnetwork(project, region, subnetwork)
 
 
 def NormalizeBinauthzEvaluationMode(evaluation_mode):

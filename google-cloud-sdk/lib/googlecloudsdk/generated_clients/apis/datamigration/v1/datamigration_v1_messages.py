@@ -3792,6 +3792,7 @@ class MigrationJob(_messages.Message):
       PREPARING_THE_DUMP: Only RDS flow - the sources writes stopped, waiting
         for dump to begin
       READY_FOR_PROMOTE: The migration job is ready to be promoted.
+      DIFF_BACKUP: The migration job is in the differential backup phase.
     """
     PHASE_UNSPECIFIED = 0
     FULL_DUMP = 1
@@ -3800,6 +3801,7 @@ class MigrationJob(_messages.Message):
     WAITING_FOR_SOURCE_WRITES_TO_STOP = 4
     PREPARING_THE_DUMP = 5
     READY_FOR_PROMOTE = 6
+    DIFF_BACKUP = 7
 
   class StateValueValuesEnum(_messages.Enum):
     r"""The current migration job state.
@@ -5361,6 +5363,7 @@ class SqlServerHomogeneousMigrationJobConfig(_messages.Message):
       (?.*)\.(?\d*).trn
     databaseBackups: Required. Backup details per database in Cloud Storage.
     databaseDetails: Optional. Backup details per database in Cloud Storage.
+    useDiffBackup: Optional. Enable differential backups.
   """
 
   @encoding.MapUnrecognizedFields('additionalProperties')
@@ -5391,6 +5394,7 @@ class SqlServerHomogeneousMigrationJobConfig(_messages.Message):
   backupFilePattern = _messages.StringField(1)
   databaseBackups = _messages.MessageField('SqlServerDatabaseBackup', 2, repeated=True)
   databaseDetails = _messages.MessageField('DatabaseDetailsValue', 3)
+  useDiffBackup = _messages.BooleanField(4)
 
 
 class SshScript(_messages.Message):

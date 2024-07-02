@@ -280,6 +280,9 @@ def AddReleaseChannelFlag(
     parser, is_update=False, autopilot=False, hidden=False
 ):
   """Adds a --release-channel flag to the given parser."""
+  choices = ['rapid', 'regular', 'stable', 'extended']
+  visible_choices = ['rapid', 'regular', 'stable']
+
   short_text = """\
 Release channel a cluster is subscribed to.
 
@@ -299,36 +302,53 @@ When a cluster is subscribed to a release channel, Google maintains both the
 master version and the node version. Node auto-upgrade is enabled by default
 for release channel clusters and can be controlled via [upgrade-scope
 exclusions](https://cloud.google.com/kubernetes-engine/docs/concepts/maintenance-windows-and-exclusions#scope_of_maintenance_to_exclude).
-"""
-  choices = {
-      'rapid': """\
-'rapid' channel is offered on an early access basis for customers who want
-to test new releases.
 
-WARNING: Versions available in the 'rapid' channel may be subject to
-unresolved issues with no known workaround and are not subject to any
-SLAs.
-""",
-      'regular': """\
-Clusters subscribed to 'regular' receive versions that are considered GA
-quality. 'regular' is intended for production users who want to take
-advantage of new features.""",
-      'stable': """\
-Clusters subscribed to 'stable' receive versions that are known to be
-stable and reliable in production.""",
-  }
+"""
+
+  help_text += """\
+CHANNEL must be one of:
+
+`rapid`
+
+   'rapid' channel is offered on an early access basis for customers
+   who want to test new releases.
+
+   WARNING: Versions available in the 'rapid' channel may be subject
+   to unresolved issues with no known workaround and are not subject
+   to any SLAs.
+
+`regular`
+
+   Clusters subscribed to 'regular' receive versions that are
+   considered GA quality. 'regular' is intended for production users
+   who want to take advantage of new features.
+
+`stable`
+
+   Clusters subscribed to 'stable' receive versions that are known to
+   be stable and reliable in production.
+"""
+
   if not autopilot:
-    choices.update({
-        'None': """\
-Use 'None' to opt-out of any release channel.
-""",
-    })
+    choices.append('None')
+    visible_choices.append('None')
+    help_text += """\
+
+`None`
+
+   Use 'None' to opt-out of any release channel.
+"""
+
   return parser.add_argument(
       '--release-channel',
       metavar='CHANNEL',
-      choices=choices,
       help=help_text,
       hidden=hidden,
+      type=arg_parsers.ArgList(
+          choices=choices,
+          visible_choices=visible_choices,
+          max_length=1,
+      ),
   )
 
 
@@ -3676,6 +3696,15 @@ def ValidateIstioConfigUpdateArgs(istio_config_args, disable_addons_args):
     )
 
 
+def WarnForUnspecifiedKubeletReadonlyPort():
+  log.status.Print(
+      'Note: The Kubelet readonly port (10255) is now deprecated. '
+      'Please update your workloads to use the recommended alternatives. '
+      'See https://cloud.google.com/kubernetes-engine/docs/how-to/disable-kubelet-readonly-port '  # pylint: disable=line-too-long
+      'for ways to check usage and for migration instructions.'
+  )
+
+
 # TODO(b/110368338): Drop this warning when changing the default value of the
 # flag.
 def WarnForUnspecifiedIpAllocationPolicy(args):
@@ -3763,12 +3792,6 @@ For more information on Workload Identity, see
             https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity
   """,
       required=False,
-      type=arg_parsers.RegexpValidator(
-          # Don't document hub.id.goog in the error, but still pass it through
-          # for now.
-          r'^[a-z][-a-z0-9]{4,}[a-z0-9]\.(svc|hub)\.id\.goog$',
-          "Must be in format of '[PROJECT_ID].svc.id.goog'",
-      ),
   )
   if use_identity_provider:
     parser.add_argument(
@@ -3948,6 +3971,8 @@ def AddWorkloadVulnScanningEnumFlag(parser):
 
       To disable in an existing cluster, explicitly set the flag to
       `--workload-vulnerability-scanning=disabled`.
+
+      For more information on enablement, see https://cloud.google.com/kubernetes-engine/docs/concepts/about-security-posture-dashboard#feature-enablement.
       """),
   )
 
@@ -3970,6 +3995,8 @@ def AddSecurityPostureEnumFlag(parser):
 
       To disable in an existing cluster, explicitly set the flag to
       `--security-posture=disabled`.
+
+      For more information on enablement, see https://cloud.google.com/kubernetes-engine/docs/concepts/about-security-posture-dashboard#feature-enablement.
       """),
   )
 
@@ -6533,3 +6560,102 @@ def AddComplianceFlags(parser, hidden=True):
       help=standards_help,
       hidden=hidden,
   )
+
+
+def AddInsecureRBACBindingFlags(parser, hidden=True):
+  """Adds --enable-insecure-binding-system-authenticated and --enable-insecure-binding-system-unauthenticated flag group to the group.
+
+  Args:
+    parser: A given parser.
+    hidden: hidden status
+  """
+  group = parser.add_group(hidden=hidden, mutex=False)
+  help_text = """\
+        Allow binding system:authenticated to cluster role binding and role binding
+
+        To disable in an existing cluster, explicitly set flag to
+        --no-enable-insecure-binding-system-authenticated
+    """
+  group.add_argument(
+      '--enable-insecure-binding-system-authenticated',
+      action='store_true',
+      default=None,
+      help=help_text,
+      hidden=hidden,
+  )
+  help_text = """\
+        Allow binding system:unauthenticated and system:anonymous to cluster role binding and role binding
+
+        To disable in an existing cluster, explicitly set flag to
+        --no-enable-insecure-binding-system-unauthenticated
+    """
+  group.add_argument(
+      '--enable-insecure-binding-system-unauthenticated',
+      action='store_true',
+      default=None,
+      help=help_text,
+      hidden=hidden,
+  )
+
+
+def AddAdditionalIpRangesFlag(parser):
+  """Adds additional IP ranges flag to parser."""
+
+  help_text = """\
+Add additional subnetworks named "my-subnet" with pod ipv4 range named "my-range" to the cluster.
+
+Examples:
+
+  $ {command} example-cluster --additional-ip-ranges=subnetwork=my-subnet,pod-ipv4-range=my-range
+"""
+
+  spec = {
+      'subnetwork': str,
+      'pod-ipv4-range': str,
+  }
+
+  parser.add_argument(
+      '--additional-ip-ranges',
+      metavar='subnetwork=NAME,pod-ipv4-range=NAME',
+      type=arg_parsers.ArgDict(
+          spec=spec,
+          required_keys=['subnetwork', 'pod-ipv4-range'],
+      ),
+      action='append',
+      help=help_text,
+  )
+
+
+def AddRemoveAdditionalIpRangesFlag(parser):
+  """Adds flag to remove additional Ip ranges to parser."""
+
+  help_text = """\
+Additional subnetworks to be removed from the cluster.
+
+Examples:
+
+Remove pod range named "my-range" under additional subnetwork named "my-subnet" from the cluster.
+
+  $ {command} example-cluster --remove-additional-ip-ranges=subnetwork=my-subnet,pod-ipv4-range=my-range
+
+Remove additional subnetwork named "my-subnet", including all the pod ipv4 ranges under the subnetwork.
+
+  $ {command} example-cluster --remove-additional-ip-ranges=subnetwork=my-subnet
+
+
+"""
+  spec = {
+      'subnetwork': str,
+      'pod-ipv4-range': str,
+  }
+  parser.add_argument(
+      '--remove-additional-ip-ranges',
+      metavar='subnetwork=NAME,pod-ipv4-range=NAME',
+      type=arg_parsers.ArgDict(
+          spec=spec,
+          required_keys=['subnetwork'],
+      ),
+      action='append',
+      help=help_text,
+  )
+

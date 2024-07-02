@@ -2099,6 +2099,7 @@ lib/third_party/google/auth/impersonated_credentials.py
 lib/third_party/google/auth/jwt.py
 lib/third_party/google/auth/metrics.py
 lib/third_party/google/auth/pluggable.py
+lib/third_party/google/auth/py.typed
 lib/third_party/google/auth/transport/__init__.py
 lib/third_party/google/auth/transport/_aiohttp_requests.py
 lib/third_party/google/auth/transport/_custom_tls_signer.py
@@ -2388,10 +2389,14 @@ lib/third_party/google/oauth2/challenges.py
 lib/third_party/google/oauth2/credentials.py
 lib/third_party/google/oauth2/gdch_credentials.py
 lib/third_party/google/oauth2/id_token.py
+lib/third_party/google/oauth2/py.typed
 lib/third_party/google/oauth2/reauth.py
 lib/third_party/google/oauth2/service_account.py
 lib/third_party/google/oauth2/sts.py
 lib/third_party/google/oauth2/utils.py
+lib/third_party/google/oauth2/webauthn_handler.py
+lib/third_party/google/oauth2/webauthn_handler_factory.py
+lib/third_party/google/oauth2/webauthn_types.py
 lib/third_party/google/pubsub/LICENSE
 lib/third_party/google/pubsub/__init__.py
 lib/third_party/google/pubsub/gapic_version.py

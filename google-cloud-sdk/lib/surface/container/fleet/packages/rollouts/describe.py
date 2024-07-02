@@ -30,7 +30,6 @@ _DETAILED_HELP = {
 }
 
 
-@base.Hidden
 @base.DefaultUniverseOnly
 @base.ReleaseTracks(base.ReleaseTrack.ALPHA)
 class Describe(base.DescribeCommand):
@@ -46,10 +45,10 @@ class Describe(base.DescribeCommand):
   @staticmethod
   def Args(parser):
     parser.display_info.AddTransforms(
-        {'all_messages': utils.TransformAllMessages}
+        {'all_messages': utils.TransformAllClusterLevelMessages}
     )
     parser.display_info.AddTransforms(
-        {'trim_message': utils.TransformTrimMessage}
+        {'trim_message': utils.TransformTrimClusterLevelMessages}
     )
     flags.AddNameFlag(parser)
     flags.AddFleetPackageFlag(parser)

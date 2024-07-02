@@ -357,15 +357,16 @@ def AddBackup(parser, hidden=False):
   )
 
 
-def AddSkipFinalBackup(parser):
+def AddEnableFinalBackup(parser):
   parser.add_argument(
-      '--skip-final-backup',
+      '--enable-final-backup',
       required=False,
       action='store_true',
       default=False,
       hidden=True,
       help=(
-          'Skips the final backup to be taken at the time of instance deletion.'
+          'Enables the final backup to be taken at the time of instance'
+          ' deletion.'
       ),
   )
 
@@ -2087,6 +2088,23 @@ def AddShowSqlNetworkArchitecture(parser):
   )
 
 
+def AddShowTransactionalLogStorageState(
+    parser, show_negated_in_help=False, hidden=True
+):
+  """Adds the `--show-transactional-log-storage-state` flag to the parser."""
+  kwargs = _GetKwargsForBoolFlag(show_negated_in_help)
+  parser.add_argument(
+      '--show-transactional-log-storage-state',
+      required=False,
+      help=(
+          'Show the storage location of the transactional logs used for'
+          ' point-in-time recovery (PITR) by the instance.'
+      ),
+      hidden=hidden,
+      **kwargs
+  )
+
+
 INSTANCES_USERLABELS_FORMAT = ':(settings.userLabels:alias=labels:label=LABELS)'
 
 INSTANCES_FORMAT_COLUMNS = [
@@ -2145,6 +2163,33 @@ def GetInstanceListFormatForNetworkArchitectureUpgrade():
   table_format = '{} table({})'.format(
       INSTANCES_USERLABELS_FORMAT,
       ','.join(INSTANCES_FORMAT_COLUMNS_WITH_NETWORK_ARCHITECTURE),
+  )
+
+  return table_format
+
+INSTANCES_FORMAT_COLUMNS_WITH_TRANSACTIONAL_LOG_STORAGE_STATE = [
+    'name',
+    'databaseVersion',
+    'firstof(gceZone,region):label=LOCATION',
+    'settings.tier',
+    (
+        'ip_addresses.filter("type:PRIMARY").*extract(ip_address).flatten()'
+        '.yesno(no="-"):label=PRIMARY_ADDRESS'
+    ),
+    (
+        'ip_addresses.filter("type:PRIVATE").*extract(ip_address).flatten()'
+        '.yesno(no="-"):label=PRIVATE_ADDRESS'
+    ),
+    'state:label=STATUS',
+    'settings.backupConfiguration.transactionalLogStorageState:label=TRANSACTIONAL_LOG_STORAGE_STATE',
+]
+
+
+def GetInstanceListFormatForTransactionalLogStorageSwitch():
+  """Returns the table format for listing instances with the storage location of their transactional logs."""
+  table_format = '{} table({})'.format(
+      INSTANCES_USERLABELS_FORMAT,
+      ','.join(INSTANCES_FORMAT_COLUMNS_WITH_TRANSACTIONAL_LOG_STORAGE_STATE),
   )
 
   return table_format
@@ -2542,6 +2587,19 @@ def AddEnableGoogleMLIntegration(parser, hidden=False):
   )
 
 
+def AddEnableDataplexIntegration(parser):
+  """Adds --enable-dataplex-integration flag."""
+  parser.add_argument(
+      '--enable-dataplex-integration',
+      required=False,
+      hidden=True,
+      help=(
+          'Enable Dataplex integration for Google Cloud SQL.'
+      ),
+      action=arg_parsers.StoreTrueFalseAction,
+  )
+
+
 def AddSwitchoverDbTimeout(parser):
   parser.add_argument(
       '--db-timeout',
@@ -2553,4 +2611,46 @@ def AddSwitchoverDbTimeout(parser):
           ' of all database operations. Default value is 10 minutes and can be'
           ' modified to a maximum value of 24h.'
       )
+  )
+
+
+def AddServerCaMode(parser):
+  """Adds the '--server-ca-mode' flag to the parser.
+
+  Args:
+    parser: The current argparse parser to add this to.
+  """
+  help_text = 'Set the server CA mode of the instance.'
+  parser.add_argument(
+      '--server-ca-mode',
+      choices={
+          'GOOGLE_MANAGED_INTERNAL_CA': (
+              'Google-managed self-signed internal CA.'
+          ),
+          'GOOGLE_MANAGED_CAS_CA': (
+              "Google-managed regional CA part of root CA hierarchy hosted on"
+              " Google Cloud's Certificate Authority Service (CAS)."
+          ),
+      },
+      required=False,
+      default=None,
+      help=help_text,
+      hidden=True,
+  )
+
+
+def AddSwitchTransactionLogsToCloudStorage(
+    parser, show_negated_in_help=False, hidden=True
+):
+  """Adds '--switch-transaction-logs-to-cloud-storage' flag to the parser."""
+  kwargs = _GetKwargsForBoolFlag(show_negated_in_help)
+  parser.add_argument(
+      '--switch-transaction-logs-to-cloud-storage',
+      required=False,
+      help=(
+          'Initiate switching transaction logs of the instance to cloud'
+          ' storage.'
+      ),
+      hidden=hidden,
+      **kwargs
   )

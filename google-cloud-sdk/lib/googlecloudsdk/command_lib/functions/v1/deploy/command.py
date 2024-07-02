@@ -245,10 +245,6 @@ def _ApplyCMEKArgsToFunction(function_ref, function, args):
     )
     function.dockerRepository = new_docker_repository
     if function.dockerRepository != old_docker_repository:
-      if function.dockerRepository:
-        cmek_util.ValidateDockerRepositoryForFunction(
-            function.dockerRepository, function_ref
-        )
       updated_fields.append('dockerRepository')
   if function.kmsKeyName and not function.dockerRepository:
     raise calliope_exceptions.RequiredArgumentException(
@@ -375,22 +371,20 @@ def _ApplyBuildpackStackArgsToFunction(function, args, track):
   return updated_fields
 
 
-def _ApplyBuildServiceAccountToFunction(function, args, track):
+def _ApplyBuildServiceAccountToFunction(function, args):
   """Populates the `build_service_account` field of a Cloud Function message.
 
   Args:
     function: Cloud function message to be populated.
     args: All CLI arguments.
-    track: release track.
 
   Returns:
     updated_fields: update mask containing the list of fields to be updated.
   """
-  if track is base.ReleaseTrack.GA:
-    return []
-
   updated_fields = []
-  if args.IsSpecified('build_service_account'):
+  if args.IsSpecified('build_service_account') or args.IsSpecified(
+      'clear_build_service_account'
+  ):
     function.buildServiceAccount = args.build_service_account
     updated_fields.append('build_service_account')
 
@@ -679,13 +673,12 @@ def Run(args, track=None):
       _ApplyBuildpackStackArgsToFunction(function, args, track)
   )
 
+  updated_fields.extend(_ApplyBuildServiceAccountToFunction(function, args))
+
   # TODO(b/287538740): Can be cleaned up after a full transition to the AR.
+  # Expected to be set after all other fields.
   updated_fields.extend(
       _DefaultDockerRegistryIfUnspecified(function, updated_fields)
-  )
-
-  updated_fields.extend(
-      _ApplyBuildServiceAccountToFunction(function, args, track)
   )
 
   api_enablement.PromptToEnableApiIfDisabled('cloudbuild.googleapis.com')

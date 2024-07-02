@@ -37,7 +37,7 @@ class AccessLevel(_messages.Message):
     custom: A `CustomLevel` written in the Common Expression Language.
     description: Description of the `AccessLevel` and its use. Does not affect
       behavior.
-    name: Required. Resource name for the `AccessLevel`. Format:
+    name: Identifier. Resource name for the `AccessLevel`. Format:
       `accessPolicies/{access_policy}/accessLevels/{access_level}`. The
       `access_level` component must begin with a letter, followed by
       alphanumeric characters or `_`. Its maximum length is 50 characters.
@@ -62,9 +62,10 @@ class AccessPolicy(_messages.Message):
   Fields:
     etag: Output only. An opaque identifier for the current version of the
       `AccessPolicy`. This will always be a strongly validated etag, meaning
-      that two Access Polices will be identical if and only if their etags are
-      identical. Clients should not expect this to be in any specific format.
-    name: Resource name of the `AccessPolicy`. Format:
+      that two Access Policies will be identical if and only if their etags
+      are identical. Clients should not expect this to be in any specific
+      format.
+    name: Identifier. Resource name of the `AccessPolicy`. Format:
       `accessPolicies/{access_policy}`
     parent: Immutable. The parent of this `AccessPolicy` in the Cloud Resource
       Hierarchy Format: `organizations/{organization_id}`
@@ -206,7 +207,7 @@ class AccesscontextmanagerAccessPoliciesAccessLevelsPatchRequest(_messages.Messa
 
   Fields:
     accessLevel: A AccessLevel resource to be passed as the request body.
-    name: Required. Resource name for the `AccessLevel`. Format:
+    name: Identifier. Resource name for the `AccessLevel`. Format:
       `accessPolicies/{access_policy}/accessLevels/{access_level}`. The
       `access_level` component must begin with a letter, followed by
       alphanumeric characters or `_`. Its maximum length is 50 characters.
@@ -318,10 +319,10 @@ class AccesscontextmanagerAccessPoliciesAuthorizedOrgsDescsPatchRequest(_message
   Fields:
     authorizedOrgsDesc: A AuthorizedOrgsDesc resource to be passed as the
       request body.
-    name: Resource name for the `AuthorizedOrgsDesc`. Format: `accessPolicies/
-      {access_policy}/authorizedOrgsDescs/{authorized_orgs_desc}`. The
-      `authorized_orgs_desc` component must begin with a letter, followed by
-      alphanumeric characters or `_`. After you create an
+    name: Identifier. Resource name for the `AuthorizedOrgsDesc`. Format: `acc
+      essPolicies/{access_policy}/authorizedOrgsDescs/{authorized_orgs_desc}`.
+      The `authorized_orgs_desc` component must begin with a letter, followed
+      by alphanumeric characters or `_`. After you create an
       `AuthorizedOrgsDesc`, you cannot change its `name`.
     updateMask: Required. Mask to control which fields get updated. Must be
       non-empty.
@@ -392,7 +393,7 @@ class AccesscontextmanagerAccessPoliciesPatchRequest(_messages.Message):
 
   Fields:
     accessPolicy: A AccessPolicy resource to be passed as the request body.
-    name: Resource name of the `AccessPolicy`. Format:
+    name: Identifier. Resource name of the `AccessPolicy`. Format:
       `accessPolicies/{access_policy}`
     updateMask: Required. Mask to control which fields get updated. Must be
       non-empty.
@@ -479,7 +480,7 @@ class AccesscontextmanagerAccessPoliciesServicePerimetersPatchRequest(_messages.
   object.
 
   Fields:
-    name: Required. Resource name for the `ServicePerimeter`. Format:
+    name: Identifier. Resource name for the `ServicePerimeter`. Format:
       `accessPolicies/{access_policy}/servicePerimeters/{service_perimeter}`.
       The `service_perimeter` component must begin with a letter, followed by
       alphanumeric characters or `_`. After you create a `ServicePerimeter`,
@@ -613,6 +614,11 @@ class AccesscontextmanagerOrganizationsGcpUserAccessBindingsListRequest(_message
   object.
 
   Fields:
+    filter: Optional. The literal filter pipelines to be returned. See
+      https://google.aip.dev/160 for more details. Accepts values: *
+      principal:group_key * principal:service_account OR
+      principal:service_account_project_number. If this field is empty or not
+      one of the above, the default value is "principal:group_key".
     pageSize: Optional. Maximum number of items to return. The server may
       return fewer items. If left blank, the server may return any number of
       items.
@@ -621,9 +627,10 @@ class AccesscontextmanagerOrganizationsGcpUserAccessBindingsListRequest(_message
     parent: Required. Example: "organizations/256"
   """
 
-  pageSize = _messages.IntegerField(1, variant=_messages.Variant.INT32)
-  pageToken = _messages.StringField(2)
-  parent = _messages.StringField(3, required=True)
+  filter = _messages.StringField(1)
+  pageSize = _messages.IntegerField(2, variant=_messages.Variant.INT32)
+  pageToken = _messages.StringField(3)
+  parent = _messages.StringField(4, required=True)
 
 
 class AccesscontextmanagerOrganizationsGcpUserAccessBindingsPatchRequest(_messages.Message):
@@ -814,10 +821,10 @@ class AuthorizedOrgsDesc(_messages.Message):
       `AuthorizedOrgsDesc` resource.
     authorizationType: A granular control type for authorization levels. Valid
       value is `AUTHORIZATION_TYPE_TRUST`.
-    name: Resource name for the `AuthorizedOrgsDesc`. Format: `accessPolicies/
-      {access_policy}/authorizedOrgsDescs/{authorized_orgs_desc}`. The
-      `authorized_orgs_desc` component must begin with a letter, followed by
-      alphanumeric characters or `_`. After you create an
+    name: Identifier. Resource name for the `AuthorizedOrgsDesc`. Format: `acc
+      essPolicies/{access_policy}/authorizedOrgsDescs/{authorized_orgs_desc}`.
+      The `authorized_orgs_desc` component must begin with a letter, followed
+      by alphanumeric characters or `_`. After you create an
       `AuthorizedOrgsDesc`, you cannot change its `name`.
     orgs: The list of organization ids in this AuthorizedOrgsDesc. Format:
       `organizations/` Example: `organizations/123456`
@@ -1874,32 +1881,27 @@ class Policy(_messages.Message):
 
 
 class ReauthSettings(_messages.Message):
-  r"""The settings below can generate several special cases: 1. No
-  reauth_settings When none of the fields are set. 2. Reauth_settings has only
-  is_enforced = false. Any other fields in Reauth_settings will be ignored. It
-  indicates this group should use the app's session setting. 3.
-  Reauth_settings has only is_enforced = true, but no max_age_sec. It
-  indicates this group's session length is infinite. 4. Reauth_settings has
-  is_enforced = true and max_age_sec is positive number. It indicates the
-  group's session time is set as max_age_sec.
+  r"""Stores settings related to Google Cloud Session Length including session
+  duration, the type of challenge (i.e. method) they should face when their
+  session expires, and other related settings.
 
   Enums:
     ReauthMethodValueValuesEnum: Reauth method when users GCP session is up.
 
   Fields:
-    maxAgeSec: The session length. Setting this field to zero is equal to
-      disabling. Reauth. Also can set infinite session by flipping the enabled
-      bit to false below. If use_oidc_max_age is true, for OIDC apps, the
-      session length will be the minimum of this field and OIDC max_age param.
     maxInactivity: How long a user is allowed to take between actions before a
       new access token must be issued. Presently only set for Cloud Apps.
     reauthMethod: Reauth method when users GCP session is up.
+    sessionLength: The session length. Setting this field to zero is equal to
+      disabling. Reauth. Also can set infinite session by flipping the enabled
+      bit to false below. If use_oidc_max_age is true, for OIDC apps, the
+      session length will be the minimum of this field and OIDC max_age param.
     sessionLengthEnabled: Big red button to turn off GCSL. When false, all
       fields set above will be disregarded and the session length is basically
       infinite.
     useOidcMaxAge: Only useful for OIDC apps. When false, the OIDC max_age
       param, if passed in the authentication request will be ignored. When
-      true, the re-auth period will be the minimum of the max_age_sec field
+      true, the re-auth period will be the minimum of the session_length field
       and the max_age OIDC param.
   """
 
@@ -1922,9 +1924,9 @@ class ReauthSettings(_messages.Message):
     SECURITY_KEY = 2
     PASSWORD = 3
 
-  maxAgeSec = _messages.StringField(1)
-  maxInactivity = _messages.StringField(2)
-  reauthMethod = _messages.EnumField('ReauthMethodValueValuesEnum', 3)
+  maxInactivity = _messages.StringField(1)
+  reauthMethod = _messages.EnumField('ReauthMethodValueValuesEnum', 2)
+  sessionLength = _messages.StringField(3)
   sessionLengthEnabled = _messages.BooleanField(4)
   useOidcMaxAge = _messages.BooleanField(5)
 
@@ -2014,7 +2016,7 @@ class ServicePerimeter(_messages.Message):
   Fields:
     description: Description of the `ServicePerimeter` and its use. Does not
       affect behavior.
-    name: Required. Resource name for the `ServicePerimeter`. Format:
+    name: Identifier. Resource name for the `ServicePerimeter`. Format:
       `accessPolicies/{access_policy}/servicePerimeters/{service_perimeter}`.
       The `service_perimeter` component must begin with a letter, followed by
       alphanumeric characters or `_`. After you create a `ServicePerimeter`,

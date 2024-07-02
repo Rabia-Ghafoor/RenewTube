@@ -17,6 +17,7 @@
 from googlecloudsdk.api_lib.container.fleet.packages import fleet_packages as apis
 from googlecloudsdk.calliope import base
 from googlecloudsdk.command_lib.container.fleet.packages import flags
+from googlecloudsdk.command_lib.container.fleet.packages import utils
 from googlecloudsdk.command_lib.export import util as export_util
 from googlecloudsdk.command_lib.util.concepts import concept_parsers
 from googlecloudsdk.core.console import console_io
@@ -31,7 +32,6 @@ _DETAILED_HELP = {
 }
 
 
-@base.Hidden
 @base.DefaultUniverseOnly
 @base.ReleaseTracks(base.ReleaseTrack.ALPHA)
 class Update(base.UpdateCommand):
@@ -53,7 +53,9 @@ class Update(base.UpdateCommand):
   def Run(self, args):
     """Run the update command."""
     client = apis.FleetPackagesClient()
-    data = console_io.ReadFromFileOrStdin(args.source, binary=False)
+    data = console_io.ReadFromFileOrStdin(
+        utils.ExpandPathForUser(args.source), binary=False
+    )
     fleet_package = export_util.Import(
         message_type=client.messages.FleetPackage,
         stream=data,
@@ -64,6 +66,7 @@ class Update(base.UpdateCommand):
         'target',
         'variantSelector',
         'rolloutStrategy',
+        'deletionPropagationPolicy',
     ]
     update_mask_attrs = []
     for attr in possible_attributes:
@@ -73,8 +76,9 @@ class Update(base.UpdateCommand):
     update_mask = ','.join(update_mask_attrs)
 
     fully_qualified_name = f'projects/{flags.GetProject(args)}/locations/{flags.GetLocation(args)}/fleetPackages/{args.fleet_package}'
-    if not fleet_package.name:
-      fleet_package.name = fully_qualified_name
+    fleet_package = utils.UpsertFleetPackageName(
+        fleet_package, fully_qualified_name
+    )
 
     return client.Update(
         fleet_package=fleet_package,

@@ -35,7 +35,6 @@ def _Run(
     enable_labels=False,
     legacy_output=False,
     enable_push_to_cps=False,
-    enable_cloud_storage_use_topic_schema=False,
 ):
   """Creates one or more subscriptions."""
   flags.ValidateDeadLetterPolicy(args)
@@ -66,6 +65,9 @@ def _Run(
   use_table_schema = getattr(args, 'use_table_schema', None)
   write_metadata = getattr(args, 'write_metadata', None)
   drop_unknown_fields = getattr(args, 'drop_unknown_fields', None)
+  bigquery_service_account_email = getattr(
+      args, 'bigquery_service_account_email', None
+  )
   cloud_storage_bucket = getattr(args, 'cloud_storage_bucket', None)
   cloud_storage_file_prefix = getattr(args, 'cloud_storage_file_prefix', None)
   cloud_storage_file_suffix = getattr(args, 'cloud_storage_file_suffix', None)
@@ -82,13 +84,14 @@ def _Run(
   cloud_storage_output_format = None
   if cloud_storage_output_format_list:
     cloud_storage_output_format = cloud_storage_output_format_list[0]
-  cloud_storage_use_topic_schema = (
-      getattr(args, 'cloud_storage_use_topic_schema', None)
-      if enable_cloud_storage_use_topic_schema
-      else None
+  cloud_storage_use_topic_schema = getattr(
+      args, 'cloud_storage_use_topic_schema', None
   )
   cloud_storage_write_metadata = getattr(
       args, 'cloud_storage_write_metadata', None
+  )
+  cloud_storage_service_account_email = getattr(
+      args, 'cloud_storage_service_account_email', None
   )
   pubsub_export_topic = (
       getattr(args, 'pubsub_export_topic', None) if enable_push_to_cps else None
@@ -141,6 +144,7 @@ def _Run(
           use_table_schema=use_table_schema,
           write_metadata=write_metadata,
           drop_unknown_fields=drop_unknown_fields,
+          bigquery_service_account_email=bigquery_service_account_email,
           cloud_storage_bucket=cloud_storage_bucket,
           cloud_storage_file_prefix=cloud_storage_file_prefix,
           cloud_storage_file_suffix=cloud_storage_file_suffix,
@@ -150,6 +154,7 @@ def _Run(
           cloud_storage_output_format=cloud_storage_output_format,
           cloud_storage_use_topic_schema=cloud_storage_use_topic_schema,
           cloud_storage_write_metadata=cloud_storage_write_metadata,
+          cloud_storage_service_account_email=cloud_storage_service_account_email,
           pubsub_export_topic=pubsub_export_topic,
           pubsub_export_topic_region=pubsub_export_topic_region,
       )
@@ -225,7 +230,6 @@ class CreateBeta(Create):
     flags.AddSubscriptionSettingsFlags(
         parser,
         enable_push_to_cps=True,
-        enable_cloud_storage_use_topic_schema=True,
     )
     labels_util.AddCreateLabelsFlags(parser)
 
@@ -238,5 +242,4 @@ class CreateBeta(Create):
         enable_labels=True,
         legacy_output=legacy_output,
         enable_push_to_cps=True,
-        enable_cloud_storage_use_topic_schema=True,
     )

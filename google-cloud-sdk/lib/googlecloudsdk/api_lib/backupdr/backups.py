@@ -37,6 +37,18 @@ class ComputeRestoreConfig(util.RestrictedDict):
         "ServiceAccount",
         "Scopes",
         "NoScopes",
+        "CreateDisks",
+        "Description",
+        "Metadata",
+        "Labels",
+        "Tags",
+        "MachineType",
+        "Hostname",
+        "EnableUefiNetworking",
+        "ThreadsPerCore",
+        "VisibleCoreCount",
+        "Accelerator",
+        "MinCpuPlatform",
     ]
     super(ComputeRestoreConfig, self).__init__(supported_flags, *args, **kwargs)
 
@@ -92,6 +104,7 @@ class BackupsClient(util.BackupDrClientBase):
         )
     )
 
+    # Network Interface
     if "NetworkInterfaces" in restore_config:
       network_interfaces_message = ComputeUtil.ParserNetworkInterface(
           self.messages, restore_config["NetworkInterfaces"]
@@ -101,6 +114,7 @@ class BackupsClient(util.BackupDrClientBase):
             network_interfaces_message
         )
 
+    # Service Account & Scopes
     service_accounts_message = ComputeUtil.ParserServiceAccount(
         self.messages,
         restore_config.get("ServiceAccount", None),
@@ -111,6 +125,98 @@ class BackupsClient(util.BackupDrClientBase):
     if service_accounts_message:
       restore_request.computeInstanceRestoreProperties.serviceAccounts = (
           service_accounts_message
+      )
+
+    # Create Disks
+    if "CreateDisks" in restore_config:
+      disks_message = ComputeUtil.ParserDisks(
+          self.messages, restore_config["CreateDisks"]
+      )
+      if disks_message:
+        restore_request.computeInstanceRestoreProperties.disks.extend(
+            disks_message
+        )
+
+    # Description
+    if "Description" in restore_config:
+      restore_request.computeInstanceRestoreProperties.description = (
+          restore_config["Description"]
+      )
+
+    # Metadata
+    if "Metadata" in restore_config:
+      metadata_message = ComputeUtil.ParseMetadata(
+          self.messages, restore_config["Metadata"]
+      )
+      if metadata_message:
+        restore_request.computeInstanceRestoreProperties.metadata = (
+            metadata_message
+        )
+
+    # Labels
+    if "Labels" in restore_config:
+      labels_message = ComputeUtil.ParseLabels(
+          self.messages, restore_config["Labels"]
+      )
+      if labels_message:
+        restore_request.computeInstanceRestoreProperties.labels = labels_message
+
+    # Tags
+    if "Tags" in restore_config:
+      tags_message = self.messages.Tags(items=restore_config["Tags"])
+      if tags_message:
+        restore_request.computeInstanceRestoreProperties.tags = tags_message
+
+    # Machine Type
+    if "MachineType" in restore_config:
+      restore_request.computeInstanceRestoreProperties.machineType = (
+          restore_config["MachineType"]
+      )
+
+    # Hostname
+    if "Hostname" in restore_config:
+      restore_request.computeInstanceRestoreProperties.hostname = (
+          restore_config["Hostname"]
+      )
+
+    # AdvancedMachineFeatures
+    # EnableUefiNetworking, ThreadsPerCore, VisibleCoreCount
+    advanced_machine_features_message = (
+        ComputeUtil.ParseAdvancedMachineFeatures(
+            self.messages,
+            restore_config.get("EnableUefiNetworking", None),
+            restore_config.get("ThreadsPerCore", None),
+            restore_config.get("VisibleCoreCount", None),
+        )
+    )
+    if advanced_machine_features_message:
+      restore_request.computeInstanceRestoreProperties.advancedMachineFeatures = (
+          advanced_machine_features_message
+      )
+
+    # Accelerator
+    if "Accelerator" in restore_config:
+      accelerators_message = ComputeUtil.ParseAccelerator(
+          self.messages, restore_config["Accelerator"]
+      )
+      if accelerators_message:
+        restore_request.computeInstanceRestoreProperties.guestAccelerators = (
+            accelerators_message
+        )
+        # Few scheduling properties are needed to be set for using GPUs
+        # TODO: b/342962091 - Remove the following code on
+        # implementing scheduling
+        restore_request.computeInstanceRestoreProperties.scheduling = self.messages.Scheduling(
+            onHostMaintenance=self.messages.Scheduling.OnHostMaintenanceValueValuesEnum(
+                "TERMINATE"
+            ),
+            automaticRestart=True,
+        )
+
+    # MinCpuPlatform
+    if "MinCpuPlatform" in restore_config:
+      restore_request.computeInstanceRestoreProperties.minCpuPlatform = (
+          restore_config["MinCpuPlatform"]
       )
 
     request = self.messages.BackupdrProjectsLocationsBackupVaultsDataSourcesBackupsRestoreRequest(

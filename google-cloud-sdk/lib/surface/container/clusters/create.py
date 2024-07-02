@@ -173,6 +173,9 @@ def ParseCreateOptionsBase(args, is_autopilot, get_default, location,
   enable_ip_alias = get_default('enable_ip_alias')
   if hasattr(args, 'enable_ip_alias'):
     flags.WarnForUnspecifiedIpAllocationPolicy(args)
+
+  flags.WarnForUnspecifiedKubeletReadonlyPort()
+
   flags.WarnForEnablingBetaAPIs(args)
   enable_autorepair = None
   if hasattr(args, 'enable_autorepair'):
@@ -486,6 +489,12 @@ def ParseCreateOptionsBase(args, is_autopilot, get_default, location,
       enable_ray_cluster_monitoring=get_default(
           'enable_ray_cluster_monitoring'
       ),
+      enable_insecure_binding_system_authenticated=get_default(
+          'enable_insecure_binding_system_authenticated'
+      ),
+      enable_insecure_binding_system_unauthenticated=get_default(
+          'enable_insecure_binding_system_unauthenticated'
+      ),
   )
 
 
@@ -685,6 +694,9 @@ flags_to_add = {
             flags.AddRuntimeVulnerabilityInsightFlag
         ),
         'containerdConfig': flags.AddContainerdConfigFlag,
+        'secretManagerConfig': lambda p: flags.AddSecretManagerEnableFlag(
+            p, hidden=True
+        ),
         'InTransitEncryption': flags.AddInTransitEncryptionFlag,
         'enableCiliumClusterwideNetworkPolicy': (
             flags.AddEnableCiliumClusterwideNetworkPolicyFlag
@@ -695,6 +707,8 @@ flags_to_add = {
         ),
         'enableRayClusterLogging': flags.AddEnableRayClusterLogging,
         'enableRayClusterMonitoring': flags.AddEnableRayClusterMonitoring,
+        'insecureRBACBinding': lambda p: flags.AddInsecureRBACBindingFlags(
+            p, hidden=True),
     },
     BETA: {
         'accelerator': lambda p: AddAcceleratorFlag(p, True, True, True, True),
@@ -865,6 +879,8 @@ flags_to_add = {
         ),
         'enableRayClusterLogging': flags.AddEnableRayClusterLogging,
         'enableRayClusterMonitoring': flags.AddEnableRayClusterMonitoring,
+        'insecureRBACBinding': lambda p: flags.AddInsecureRBACBindingFlags(
+            p, hidden=True),
     },
     ALPHA: {
         'accelerator': lambda p: AddAcceleratorFlag(p, True, True, True, True),
@@ -1044,6 +1060,8 @@ flags_to_add = {
         ),
         'enableRayClusterLogging': flags.AddEnableRayClusterLogging,
         'enableRayClusterMonitoring': flags.AddEnableRayClusterMonitoring,
+        'insecureRBACBinding': lambda p: flags.AddInsecureRBACBindingFlags(
+            p, hidden=True),
     },
 }
 
@@ -1156,6 +1174,8 @@ class Create(base.CreateCommand):
           'details, please refer to '
           'https://cloud.google.com/kubernetes-engine/docs/how-to/pod-security-policies'
       )
+
+    cmd_util.CheckReleaseChannel(args)
 
     if options.enable_kubernetes_alpha:
       console_io.PromptContinue(
@@ -1315,6 +1335,12 @@ class CreateBeta(Create):
     ops.enable_ray_cluster_monitoring = get_default(
         'enable_ray_cluster_monitoring'
     )
+    ops.enable_insecure_binding_system_authenticated = get_default(
+        'enable_insecure_binding_system_authenticated'
+    )
+    ops.enable_insecure_binding_system_unauthenticated = get_default(
+        'enable_insecure_binding_system_unauthenticated'
+    )
     return ops
 
 
@@ -1438,5 +1464,11 @@ class CreateAlpha(Create):
     ops.enable_ray_cluster_logging = get_default('enable_ray_cluster_logging')
     ops.enable_ray_cluster_monitoring = get_default(
         'enable_ray_cluster_monitoring'
+    )
+    ops.enable_insecure_binding_system_authenticated = get_default(
+        'enable_insecure_binding_system_authenticated'
+    )
+    ops.enable_insecure_binding_system_unauthenticated = get_default(
+        'enable_insecure_binding_system_unauthenticated'
     )
     return ops
